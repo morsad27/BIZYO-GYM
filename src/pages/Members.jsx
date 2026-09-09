@@ -14,18 +14,41 @@ import "./Members.css";
 function Members() {
   const [search, setSearch] = useState("");
   const [showModal, setShowModal] = useState(false);
+
   const [editingMember, setEditingMember] = useState(null);
   const [loading, setLoading] = useState(true);
+
   const [members, setMembers] = useState([]);
+  const [membershipPlans, setMembershipPlans] = useState([]);
 
   //set default values for the form data when adding or editing a member
   const [formData, setFormData] = useState({
     name: "",
     email: "",
     phone: "",
-    membership: "Basic",
+    membershipId: "",
     status: "Active",
   });
+
+  //fetching membership plans from firebase firestore
+  useEffect(() => {
+    const unsubscribe = onSnapshot(
+      collection(db, "memberships"),
+      (snapshot) => {
+        const plansData = snapshot.docs.map((document) => ({
+          id: document.id,
+          ...document.data(),
+        }));
+
+        setMembershipPlans(plansData);
+      },
+      (error) => {
+        console.error("Error loading membership plans:", error);
+      },
+    );
+
+    return () => unsubscribe();
+  }, []);
 
   //fetching members from firebase firestore para mag display sa members page
   useEffect(() => {
@@ -73,11 +96,13 @@ function Members() {
     setEditingMember(member);
 
     setFormData({
-      name: member.name,
-      email: member.email,
-      phone: member.phone,
-      membership: member.membership,
-      status: member.status,
+      name: member.name || "",
+      email: member.email || "",
+      phone: member.phone || "",
+
+      membershipId: member.membershipId || "",
+
+      status: member.status || "Active",
     });
 
     setShowModal(true);
@@ -88,28 +113,43 @@ function Members() {
     e.preventDefault();
 
     try {
+      const selectedPlan = membershipPlans.find(
+        (plan) => plan.id === formData.membershipId,
+      );
+
+      if (!selectedPlan) {
+        alert("Please select a valid membership plan.");
+        return;
+      }
+
       const memberRef = doc(db, "members", editingMember.id);
 
       await updateDoc(memberRef, {
         name: formData.name,
         email: formData.email,
         phone: formData.phone,
-        membership: formData.membership,
+
+        membershipId: selectedPlan.id,
+        membershipName: selectedPlan.name,
+        membershipPrice: Number(selectedPlan.price),
+        membershipDuration: Number(selectedPlan.duration),
+
         status: formData.status,
       });
 
       alert("Member updated successfully!");
 
       setEditingMember(null);
-      setShowModal(false);
 
       setFormData({
         name: "",
         email: "",
         phone: "",
-        membership: "Basic",
+        membershipId: "",
         status: "Active",
       });
+
+      setShowModal(false);
     } catch (error) {
       console.error("Error updating member:", error);
       alert("Failed to update member.");
@@ -127,11 +167,27 @@ function Members() {
     e.preventDefault();
 
     try {
+      // Find the selected membership plan
+      const selectedPlan = membershipPlans.find(
+        (plan) => plan.id === formData.membershipId,
+      );
+
+      if (!selectedPlan) {
+        alert("Please select a valid membership plan.");
+        return;
+      }
+
       await addDoc(collection(db, "members"), {
         name: formData.name,
         email: formData.email,
         phone: formData.phone,
-        membership: formData.membership,
+
+        // Membership information
+        membershipId: selectedPlan.id,
+        membershipName: selectedPlan.name,
+        membershipPrice: Number(selectedPlan.price),
+        membershipDuration: Number(selectedPlan.duration),
+
         status: formData.status,
         createdAt: serverTimestamp(),
       });
@@ -142,7 +198,7 @@ function Members() {
         name: "",
         email: "",
         phone: "",
-        membership: "Basic",
+        membershipId: "",
         status: "Active",
       });
 
@@ -151,6 +207,20 @@ function Members() {
       console.error("Error adding member:", error);
       alert("Failed to add member.");
     }
+  };
+
+  const openAddMemberModal = () => {
+    setEditingMember(null);
+
+    setFormData({
+      name: "",
+      email: "",
+      phone: "",
+      membershipId: "",
+      status: "Active",
+    });
+
+    setShowModal(true);
   };
 
   const filteredMembers = members.filter((member) =>
@@ -165,22 +235,7 @@ function Members() {
           <p>Manage your gym members.</p>
         </div>
 
-        <button
-          className="add-member-btn"
-          onClick={() => {
-            setEditingMember(null);
-
-            setFormData({
-              name: "",
-              email: "",
-              phone: "",
-              membership: "Basic",
-              status: "Active",
-            });
-
-            setShowModal(true);
-          }}
-        >
+        <button className="add-member-btn" onClick={openAddMemberModal}>
           + Add Member
         </button>
       </div>
@@ -236,7 +291,7 @@ function Members() {
 
                     <td>{member.email}</td>
                     <td>{member.phone}</td>
-                    <td>{member.membership}</td>
+                    <td>{member.membershipName}</td>
 
                     <td>
                       <span
@@ -329,13 +384,18 @@ function Members() {
                 <label>Membership Plan</label>
 
                 <select
-                  name="membership"
-                  value={formData.membership}
+                  name="membershipId"
+                  value={formData.membershipId}
                   onChange={handleChange}
+                  required
                 >
-                  <option value="Basic">Basic</option>
-                  <option value="Monthly">Monthly</option>
-                  <option value="Premium">Premium</option>
+                  <option value="">Select a membership plan</option>
+
+                  {membershipPlans.map((plan) => (
+                    <option key={plan.id} value={plan.id}>
+                      {plan.name} - ₱{Number(plan.price).toLocaleString()}
+                    </option>
+                  ))}
                 </select>
               </div>
 

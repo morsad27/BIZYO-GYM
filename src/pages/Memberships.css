@@ -1,0 +1,117 @@
+.memberships-page {
+  width: 100%;
+}
+
+.memberships-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 30px;
+}
+
+.memberships-header h1 {
+  margin: 0 0 5px;
+}
+
+.memberships-header p {
+  margin: 0;
+  color: #777;
+}
+
+.add-plan-btn {
+  border: none;
+  border-radius: 8px;
+  padding: 12px 18px;
+  background: #222;
+  color: white;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.add-plan-btn:hover {
+  background: #444;
+}
+
+.plans-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 20px;
+}
+
+.plan-card {
+  background: white;
+  border-radius: 12px;
+  padding: 22px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+}
+
+.plan-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 15px;
+}
+
+.plan-card-header h2 {
+  margin: 0;
+}
+
+.plan-price {
+  font-size: 20px;
+  font-weight: bold;
+}
+
+.plan-duration {
+  color: #666;
+  margin: 15px 0 8px;
+}
+
+.plan-description {
+  color: #777;
+  min-height: 48px;
+}
+
+.plan-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 20px;
+}
+
+.plans-message {
+  background: white;
+  padding: 30px;
+  border-radius: 12px;
+  color: #777;
+}
+
+.form-group textarea {
+  padding: 12px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  resize: vertical;
+  font-family: inherit;
+  font-size: 14px;
+}
+
+.form-group textarea:focus {
+  outline: none;
+  border-color: #333;
+}
+
+@media (max-width: 1000px) {
+  .plans-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 650px) {
+  .memberships-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 15px;
+  }
+
+  .plans-grid {
+    grid-template-columns: 1fr;
+  }
+}

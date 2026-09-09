@@ -300,3 +300,22 @@
   padding: 35px;
   overflow-x: hidden;
 }
+.quick-actions a {
+  padding: 14px;
+  border: 1px solid #ddd;
+  background: white;
+  border-radius: 8px;
+  cursor: pointer;
+  text-align: left;
+  text-decoration: none;
+  color: #333;
+}
+
+.quick-actions a:hover {
+  background: #f5f5f5;
+}
+.dashboard-loading {
+  text-align: center;
+  padding: 30px;
+  color: #777;
+}

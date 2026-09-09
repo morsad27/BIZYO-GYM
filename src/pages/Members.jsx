@@ -2,10 +2,11 @@ import { useState, useEffect } from "react";
 import {
   collection,
   addDoc,
-  getDocs,
+  onSnapshot,
   deleteDoc,
   updateDoc,
   doc,
+  serverTimestamp,
 } from "firebase/firestore";
 import { db } from "../firebase";
 import "./Members.css";
@@ -14,25 +15,39 @@ function Members() {
   const [search, setSearch] = useState("");
   const [showModal, setShowModal] = useState(false);
   const [editingMember, setEditingMember] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [members, setMembers] = useState([]);
+
+  //set default values for the form data when adding or editing a member
+  const [formData, setFormData] = useState({
+    name: "",
+    email: "",
+    phone: "",
+    membership: "Basic",
+    status: "Active",
+  });
 
   //fetching members from firebase firestore para mag display sa members page
   useEffect(() => {
-    const fetchMembers = async () => {
-      try {
-        const querySnapshot = await getDocs(collection(db, "members"));
-
-        const membersData = querySnapshot.docs.map((doc) => ({
+    const unsubscribe = onSnapshot(
+      collection(db, "members"),
+      (snapshot) => {
+        const membersData = snapshot.docs.map((doc) => ({
           id: doc.id,
           ...doc.data(),
         }));
 
         setMembers(membersData);
-      } catch (error) {
-        console.error("Error fetching members:", error);
-      }
-    };
+        setLoading(false);
+      },
+      (error) => {
+        console.error("Error loading members:", error);
+        setLoading(false);
+      },
+    );
 
-    fetchMembers();
+    // Stop listening when the page is closed
+    return () => unsubscribe();
   }, []);
 
   //delete function para sa members
@@ -45,10 +60,6 @@ function Members() {
 
     try {
       await deleteDoc(doc(db, "members", id));
-
-      setMembers((prevMembers) =>
-        prevMembers.filter((member) => member.id !== id),
-      );
 
       alert("Member deleted successfully!");
     } catch (error) {
@@ -87,17 +98,6 @@ function Members() {
         status: formData.status,
       });
 
-      setMembers((prevMembers) =>
-        prevMembers.map((member) =>
-          member.id === editingMember.id
-            ? {
-                ...member,
-                ...formData,
-              }
-            : member,
-        ),
-      );
-
       alert("Member updated successfully!");
 
       setEditingMember(null);
@@ -116,16 +116,6 @@ function Members() {
     }
   };
 
-  const [members, setMembers] = useState([]);
-
-  const [formData, setFormData] = useState({
-    name: "",
-    email: "",
-    phone: "",
-    membership: "Basic",
-    status: "Active",
-  });
-
   const handleChange = (e) => {
     setFormData({
       ...formData,
@@ -143,7 +133,7 @@ function Members() {
         phone: formData.phone,
         membership: formData.membership,
         status: formData.status,
-        createdAt: new Date(),
+        createdAt: serverTimestamp(),
       });
 
       alert("Member added successfully!");
@@ -219,48 +209,63 @@ function Members() {
             </thead>
 
             <tbody>
-              {filteredMembers.map((member) => (
-                <tr key={member.id}>
-                  <td>
-                    <div className="member-name">
-                      <div className="table-avatar">
-                        {member.name.charAt(0)}
-                      </div>
-
-                      {member.name}
-                    </div>
-                  </td>
-
-                  <td>{member.email}</td>
-                  <td>{member.phone}</td>
-                  <td>{member.membership}</td>
-
-                  <td>
-                    <span
-                      className={`member-status ${
-                        member.status === "Active" ? "active" : "inactive"
-                      }`}
-                    >
-                      {member.status}
-                    </span>
-                  </td>
-
-                  <td>
-                    <button
-                      className="edit-btn"
-                      onClick={() => handleEditClick(member)}
-                    >
-                      Edit
-                    </button>
-                    <button
-                      className="delete-btn"
-                      onClick={() => handleDeleteMember(member.id)}
-                    >
-                      Delete
-                    </button>
+              {loading ? (
+                <tr>
+                  <td colSpan="6" className="loading-message">
+                    Loading members...
                   </td>
                 </tr>
-              ))}
+              ) : filteredMembers.length === 0 ? (
+                <tr>
+                  <td colSpan="6" className="empty-message">
+                    No members found.
+                  </td>
+                </tr>
+              ) : (
+                filteredMembers.map((member) => (
+                  <tr key={member.id}>
+                    <td>
+                      <div className="member-name">
+                        <div className="table-avatar">
+                          {member.name.charAt(0)}
+                        </div>
+
+                        {member.name}
+                      </div>
+                    </td>
+
+                    <td>{member.email}</td>
+                    <td>{member.phone}</td>
+                    <td>{member.membership}</td>
+
+                    <td>
+                      <span
+                        className={`member-status ${
+                          member.status === "Active" ? "active" : "inactive"
+                        }`}
+                      >
+                        {member.status}
+                      </span>
+                    </td>
+
+                    <td>
+                      <button
+                        className="edit-btn"
+                        onClick={() => handleEditClick(member)}
+                      >
+                        Edit
+                      </button>
+
+                      <button
+                        className="delete-btn"
+                        onClick={() => handleDeleteMember(member.id)}
+                      >
+                        Delete
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>

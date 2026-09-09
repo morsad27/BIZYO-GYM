@@ -245,3 +245,9 @@ td {
 .save-btn:hover {
   background: #444;
 }
+.loading-message,
+.empty-message {
+  text-align: center;
+  padding: 30px !important;
+  color: #777;
+}

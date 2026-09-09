@@ -1,0 +1,302 @@
+* {
+  box-sizing: border-box;
+}
+
+.dashboard {
+  display: flex;
+  min-height: 100vh;
+  background: #f5f6fa;
+}
+
+/* SIDEBAR */
+
+.sidebar {
+  width: 250px;
+  background: #1e1e2f;
+  color: white;
+  display: flex;
+  flex-direction: column;
+  padding: 25px 15px;
+}
+
+.logo {
+  padding: 10px 15px 35px;
+}
+
+.logo h2 {
+  margin: 0;
+  font-size: 26px;
+  letter-spacing: 2px;
+}
+
+.logo span {
+  font-size: 10px;
+  color: #aaa;
+  letter-spacing: 1px;
+}
+
+/* NAVIGATION */
+
+.sidebar-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.sidebar-nav a {
+  color: #bbb;
+  text-decoration: none;
+  padding: 13px 15px;
+  border-radius: 8px;
+  transition: 0.3s;
+}
+
+.sidebar-nav a:hover,
+.sidebar-nav .active {
+  background: #34344a;
+  color: white;
+}
+
+.sidebar-bottom {
+  margin-top: auto;
+}
+
+.logout-btn {
+  width: 100%;
+  padding: 12px;
+  border: none;
+  border-radius: 8px;
+  background: #34344a;
+  color: white;
+  cursor: pointer;
+}
+
+/* MAIN CONTENT */
+
+.dashboard-content {
+  flex: 1;
+  padding: 35px;
+  overflow-x: hidden;
+}
+
+.dashboard-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 35px;
+}
+
+.dashboard-header h1 {
+  margin-bottom: 8px;
+}
+
+.dashboard-header p {
+  color: #777;
+}
+
+.admin-profile {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.admin-avatar,
+.member-avatar {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: #333;
+  color: white;
+  font-weight: bold;
+}
+
+.admin-profile p {
+  font-size: 12px;
+}
+
+/* STATISTICS */
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 20px;
+  margin-bottom: 30px;
+}
+
+.stat-card {
+  background: white;
+  padding: 20px;
+  border-radius: 12px;
+  display: flex;
+  gap: 15px;
+  align-items: center;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+}
+
+.stat-icon {
+  font-size: 30px;
+}
+
+.stat-card p {
+  margin: 0;
+  color: #777;
+  font-size: 14px;
+}
+
+.stat-card h2 {
+  margin: 5px 0;
+}
+
+.positive {
+  color: #16a34a;
+  font-size: 12px;
+}
+
+/* BOTTOM SECTION */
+
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 25px;
+}
+
+.recent-members,
+.quick-actions {
+  background: white;
+  padding: 25px;
+  border-radius: 12px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+}
+
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.section-header p {
+  color: #777;
+  font-size: 13px;
+}
+
+.view-btn {
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-weight: bold;
+}
+
+.member-list {
+  margin-top: 20px;
+}
+
+.member-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 15px 0;
+  border-bottom: 1px solid #eee;
+}
+
+.member-info {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+
+.member-info span {
+  color: #777;
+  font-size: 13px;
+}
+
+.status {
+  padding: 5px 10px;
+  border-radius: 20px;
+  font-size: 12px;
+}
+
+.active-status {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.pending-status {
+  background: #fef3c7;
+  color: #a16207;
+}
+
+/* QUICK ACTIONS */
+
+.quick-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.quick-actions button {
+  padding: 14px;
+  border: 1px solid #ddd;
+  background: white;
+  border-radius: 8px;
+  cursor: pointer;
+  text-align: left;
+}
+
+.quick-actions button:hover {
+  background: #f5f5f5;
+}
+
+/* RESPONSIVE */
+
+@media (max-width: 1000px) {
+  .stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .dashboard-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 700px) {
+  .sidebar {
+    width: 70px;
+  }
+
+  .logo span,
+  .sidebar-nav a {
+    font-size: 0;
+  }
+
+  .sidebar-nav a::first-letter {
+    font-size: 18px;
+  }
+
+  .dashboard-content {
+    padding: 20px;
+  }
+
+  .dashboard-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 20px;
+  }
+
+  .stats-grid {
+    grid-template-columns: 1fr;
+  }
+}
+.dashboard {
+  display: flex;
+  min-height: 100vh;
+  background: #f5f6fa;
+}
+
+.dashboard-content {
+  flex: 1;
+  padding: 35px;
+  overflow-x: hidden;
+}

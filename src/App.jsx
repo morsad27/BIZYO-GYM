@@ -5,6 +5,7 @@ import Members from "./pages/Members";
 import Memberships from "./pages/Memberships";
 import DashboardLayout from "./layouts/DashboardLayout";
 import Payments from "./pages/Payments";
+import EntryLog from "./pages/EntryLog";  
 
 function App() {
   return (
@@ -16,7 +17,8 @@ function App() {
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/members" element={<Members />} />
           <Route path="/memberships" element={<Memberships />} />
-          <Route path="/payments" element={<Payments />} />
+          <Route path="/payments" element={<Payments />} /> 
+          <Route path="/entry-log" element={<EntryLog />} />
         </Route>
       </Routes>
     </BrowserRouter>

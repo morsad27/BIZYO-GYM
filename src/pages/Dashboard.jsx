@@ -104,10 +104,10 @@ function Dashboard() {
         </div>
 
         <div className="stat-card">
-          <div className="stat-icon">📅</div>
+          <div className="stat-icon">🚪</div>
 
           <div>
-            <p>Today's Attendance</p>
+            <p>Total Entries</p>
             <h2>0</h2>
 
             <span className="positive">Connect attendance next</span>
@@ -169,11 +169,12 @@ function Dashboard() {
 
           <Link to="/members">➕ Add New Member</Link>
 
-          <button>📋 Create Membership</button>
+          <Link to="/memberships">📋 Create Membership</Link>
 
-          <button>💳 Record Payment</button>
+          <Link to="/payments">💳 Record Payment</Link>
 
-          <button>📅 Record Attendance</button>
+          <Link to="/entry-log">🚪 Record Entry</Link>
+
         </div>
       </section>
     </>

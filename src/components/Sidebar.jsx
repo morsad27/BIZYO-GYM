@@ -32,15 +32,31 @@ function Sidebar() {
         </NavLink>
 
         <NavLink to="/memberships">
-          💳 <span>Memberships</span>
+          💳 <span>Membership Plans</span>
         </NavLink>
 
-        <NavLink to="/attendance">
-          📅 <span>Attendance</span>
+        <NavLink to="/entry-log">
+          🚪 <span>Entry Log</span>
         </NavLink>
 
         <NavLink to="/payments">
           💰 <span>Payments</span>
+        </NavLink>
+
+        <NavLink to="/equipment">
+          🏋️ <span>Equipment</span>
+        </NavLink>
+
+        <NavLink to="/incidents">
+          ⚠️ <span>Incidents</span>
+        </NavLink>
+
+        <NavLink to="/restricted-members">
+          🚫 <span>Restricted Members</span>
+        </NavLink>
+
+        <NavLink to="/activity-logs">
+          📋 <span>Activity Logs</span>
         </NavLink>
 
         <NavLink to="/settings">

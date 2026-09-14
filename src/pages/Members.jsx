@@ -10,6 +10,7 @@ import {
 } from "firebase/firestore";
 import { db } from "../firebase";
 import "./Members.css";
+import { QRCodeSVG } from "qrcode.react";
 
 function Members() {
   const [search, setSearch] = useState("");
@@ -29,6 +30,13 @@ function Members() {
     membershipId: "",
     status: "Active",
   });
+
+  // State for selected member's QR code
+  const [selectedMemberQR, setSelectedMemberQR] = useState(null);
+
+  const handleShowQR = (member) => {
+    setSelectedMemberQR(member);
+  };
 
   //fetching membership plans from firebase firestore
   useEffect(() => {
@@ -260,6 +268,7 @@ function Members() {
                 <th>Membership</th>
                 <th>Status</th>
                 <th>Actions</th>
+                <th>Qr Code</th>
               </tr>
             </thead>
 
@@ -316,6 +325,15 @@ function Members() {
                         onClick={() => handleDeleteMember(member.id)}
                       >
                         Delete
+                      </button>
+                    </td>
+
+                    <td>
+                      <button
+                        className="qr-btn"
+                        onClick={() => handleShowQR(member)}
+                      >
+                        View QR
                       </button>
                     </td>
                   </tr>
@@ -426,6 +444,34 @@ function Members() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+      {selectedMemberQR && (
+        <div className="modal-overlay">
+          <div className="qr-modal">
+            <div className="modal-header">
+              <h2>Member QR Code</h2>
+
+              <button
+                className="close-btn"
+                onClick={() => setSelectedMemberQR(null)}
+              >
+                ×
+              </button>
+            </div>
+
+            <div className="qr-content">
+              <h3>{selectedMemberQR.name}</h3>
+
+              <p>Scan this QR code for gym entry.</p>
+
+              <div className="qr-code-container">
+                <QRCodeSVG value={selectedMemberQR.id} size={220} />
+              </div>
+
+              <small>Member ID: {selectedMemberQR.id}</small>
+            </div>
           </div>
         </div>
       )}

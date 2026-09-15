@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   collection,
   onSnapshot,
@@ -19,16 +19,17 @@ import "./EntryLog.css";
 function EntryLog() {
   const [entries, setEntries] = useState([]);
   const [loading, setLoading] = useState(true);
-
+  
   const [scanResult, setScanResult] = useState(null);
   const [scanMessage, setScanMessage] = useState("");
   const [scanType, setScanType] = useState("");
 
+  const scanLock = useRef(false);
   // Load entry logs
   useEffect(() => {
     const entryQuery = query(
       collection(db, "entryLogs"),
-      orderBy("createdAt", "desc")
+      orderBy("createdAt", "desc"),
     );
 
     const unsubscribe = onSnapshot(
@@ -45,7 +46,7 @@ function EntryLog() {
       (error) => {
         console.error("Error loading entry logs:", error);
         setLoading(false);
-      }
+      },
     );
 
     return () => unsubscribe();
@@ -53,100 +54,125 @@ function EntryLog() {
 
   // Process scanned QR code
   const handleScan = async (decodedText) => {
-    try {
-      console.log("Scanned QR:", decodedText);
+  if (scanLock.current) {
+    return;
+  }
 
-      // Prevent repeated scanner callbacks
-      if (scanResult) {
-        return;
-      }
+  scanLock.current = true;
 
-      // Find member using Firestore document ID
-      const memberRef = doc(db, "members", decodedText);
+  try {
+    console.log("Scanned QR:", decodedText);
 
-      let member;
+    const memberRef = doc(db, "members", decodedText);
 
-      try {
-        const memberSnapshot = await getDoc(memberRef);
+    const memberSnapshot = await getDoc(memberRef);
 
-        if (!memberSnapshot.exists()) {
-          setScanMessage("Member not found.");
-          setScanType("error");
-          return;
-        }
+    if (!memberSnapshot.exists()) {
+      setScanResult(null);
+      setScanMessage("Member not found.");
+      setScanType("error");
 
-        member = {
-          id: memberSnapshot.id,
-          ...memberSnapshot.data(),
-        };
-      } catch (error) {
-        console.error("Error finding member:", error);
-        setScanMessage("Unable to find member.");
-        setScanType("error");
-        return;
-      }
+      setTimeout(() => {
+        scanLock.current = false;
+      }, 3000);
 
-      // Check member status
-      if (member.status !== "Active") {
-        setScanResult(member);
-        setScanMessage(
-          `Entry denied. ${member.name} is not an active member.`
-        );
-        setScanType("error");
-        return;
-      }
+      return;
+    }
 
-      // Check if member is already inside
-      const insideQuery = query(
-        collection(db, "entryLogs"),
-        where("memberId", "==", member.id),
-        where("status", "==", "Inside")
+    const member = {
+      id: memberSnapshot.id,
+      ...memberSnapshot.data(),
+    };
+
+    /*
+      Check member status
+    */
+    if (member.status !== "Active") {
+      setScanResult(member);
+      setScanMessage(
+        `Entry denied. ${member.name} is not an active member.`
       );
+      setScanType("error");
 
-      const insideSnapshot = await getDocs(insideQuery);
+      setTimeout(() => {
+        scanLock.current = false;
+      }, 3000);
 
-      // Member is already inside → Check Out
-      if (!insideSnapshot.empty) {
-        const entryDocument = insideSnapshot.docs[0];
+      return;
+    }
 
-        await updateDoc(
-          doc(db, "entryLogs", entryDocument.id),
-          {
-            checkOut: new Date().toLocaleTimeString(),
-            status: "Completed",
-          }
-        );
+    /*
+      Check if member is already inside
+    */
+    const insideQuery = query(
+      collection(db, "entryLogs"),
+      where("memberId", "==", member.id),
+      where("status", "==", "Inside")
+    );
 
-        setScanResult(member);
-        setScanMessage(`${member.name} checked out successfully.`);
-        setScanType("checkout");
+    const insideSnapshot = await getDocs(insideQuery);
 
-        return;
-      }
+    /*
+      Already inside → Check Out
+    */
+    if (!insideSnapshot.empty) {
+      const entryDocument = insideSnapshot.docs[0];
 
-      // Member is not inside → Check In
-      const now = new Date();
-
-      await addDoc(collection(db, "entryLogs"), {
-        memberId: member.id,
-        memberName: member.name,
-        date: now.toLocaleDateString(),
-        checkIn: now.toLocaleTimeString(),
-        checkOut: "",
-        status: "Inside",
-        createdAt: serverTimestamp(),
+      await updateDoc(doc(db, "entryLogs", entryDocument.id), {
+        checkOut: new Date().toLocaleTimeString(),
+        status: "Completed",
       });
 
       setScanResult(member);
-      setScanMessage(`${member.name} checked in successfully.`);
-      setScanType("checkin");
-    } catch (error) {
-      console.error("QR scan error:", error);
+      setScanMessage(
+        `${member.name} checked out successfully.`
+      );
+      setScanType("checkout");
 
-      setScanMessage("Something went wrong while processing the scan.");
-      setScanType("error");
+      setTimeout(() => {
+        scanLock.current = false;
+      }, 3000);
+
+      return;
     }
-  };
+
+    /*
+      Not inside → Check In
+    */
+    const now = new Date();
+
+    await addDoc(collection(db, "entryLogs"), {
+      memberId: member.id,
+      memberName: member.name,
+      date: now.toLocaleDateString(),
+      checkIn: now.toLocaleTimeString(),
+      checkOut: "",
+      status: "Inside",
+      createdAt: serverTimestamp(),
+    });
+
+    setScanResult(member);
+    setScanMessage(
+      `${member.name} checked in successfully.`
+    );
+    setScanType("checkin");
+
+    setTimeout(() => {
+      scanLock.current = false;
+    }, 3000);
+  } catch (error) {
+    console.error("QR scan error:", error);
+
+    setScanMessage(
+      "Something went wrong while processing the scan."
+    );
+    setScanType("error");
+
+    setTimeout(() => {
+      scanLock.current = false;
+    }, 3000);
+  }
+};
 
   // Start QR scanner
   useEffect(() => {
@@ -159,7 +185,7 @@ function EntryLog() {
           height: 250,
         },
       },
-      false
+      false,
     );
 
     scanner.render(
@@ -168,7 +194,7 @@ function EntryLog() {
       },
       (errorMessage) => {
         // Ignore normal scanning errors
-      }
+      },
     );
 
     return () => {
@@ -177,13 +203,6 @@ function EntryLog() {
       });
     };
   }, []);
-
-  // Reset scan result
-  const handleScanAgain = () => {
-    setScanResult(null);
-    setScanMessage("");
-    setScanType("");
-  };
 
   return (
     <div className="entry-log-page">
@@ -199,7 +218,8 @@ function EntryLog() {
           <h2>Scan Member QR Code</h2>
 
           <p className="scanner-description">
-            Scan a member QR code to automatically check them in or out.
+            Scan the member's QR code. The system will automatically check them
+            in or out.
           </p>
 
           <div id="qr-reader"></div>
@@ -214,25 +234,8 @@ function EntryLog() {
 
               <div>
                 <strong>{scanMessage}</strong>
-
-                {scanResult && (
-                  <p>
-                    {scanResult.name}
-                    {scanResult.membership &&
-                      ` • ${scanResult.membership}`}
-                  </p>
-                )}
               </div>
             </div>
-          )}
-
-          {scanResult && (
-            <button
-              className="scan-again-btn"
-              onClick={handleScanAgain}
-            >
-              Scan Another Member
-            </button>
           )}
         </div>
       </div>

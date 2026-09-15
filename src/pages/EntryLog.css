@@ -1,15 +1,12 @@
 .entry-log-page {
-  padding: 30px;
+  /* padding: 30px; */
   color: #fff;
 }
 
-.header-text h1 {
-  font-size: 28px;
-  margin-bottom: 5px;
-  color: #111;
-}
+/* =========================
+   PAGE HEADER
+========================= */
 
-/* Page Header */
 .page-header {
   display: flex;
   justify-content: space-between;
@@ -27,24 +24,106 @@
   color: #999;
 }
 
-/* Add Entry Button */
-.add-entry-btn {
-  border: none;
-  background: #ff8c00;
-  color: #fff;
-  padding: 12px 18px;
-  border-radius: 8px;
+.header-content {
+  color: #111
+}
+
+/* =========================
+   SCANNER
+========================= */
+
+.entry-scanner-section {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 25px;
+}
+
+.scanner-card {
+  width: 100%;
+  max-width: 600px;
+  background: #1e1e2d;
+  border-radius: 12px;
+  padding: 25px;
+  text-align: center;
+}
+
+.scanner-card h2 {
+  margin: 0 0 8px;
+  font-size: 20px;
+}
+
+.scanner-description {
+  color: #999;
   font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: 0.2s;
+  margin-bottom: 20px;
 }
 
-.add-entry-btn:hover {
-  background: #e67e00;
+/* Camera container */
+
+#qr-reader {
+  width: 100%;
+  max-width: 500px;
+  margin: 0 auto;
+  overflow: hidden;
+  border-radius: 10px;
 }
 
-/* Entry Log Card */
+#qr-reader video {
+  display: block;
+  width: 100%;
+  border-radius: 10px;
+}
+
+/* =========================
+   SCAN RESULT
+========================= */
+
+.scan-result {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  text-align: left;
+  margin-top: 20px;
+  padding: 15px;
+  border-radius: 8px;
+}
+
+.scan-result.checkin {
+  background: rgba(0, 194, 111, 0.12);
+  border: 1px solid rgba(0, 194, 111, 0.3);
+}
+
+.scan-result.checkout {
+  background: rgba(6, 102, 255, 0.12);
+  border: 1px solid rgba(6, 102, 255, 0.3);
+}
+
+.scan-result.error {
+  background: rgba(255, 60, 60, 0.12);
+  border: 1px solid rgba(255, 60, 60, 0.3);
+}
+
+.scan-icon {
+  min-width: 35px;
+  height: 35px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  background: #333344;
+}
+
+.scan-result p {
+  margin: 5px 0 0;
+  color: #aaa;
+  font-size: 13px;
+}
+
+/* =========================
+   ENTRY LOG TABLE
+========================= */
+
 .entry-log-card {
   background: #1e1e2d;
   border-radius: 12px;
@@ -64,7 +143,6 @@
   font-size: 18px;
 }
 
-/* Table */
 .table-container {
   width: 100%;
   overflow-x: auto;
@@ -97,7 +175,10 @@ tbody tr:hover {
   background: #252536;
 }
 
-/* Status */
+/* =========================
+   STATUS
+========================= */
+
 .entry-status {
   display: inline-block;
   padding: 5px 10px;
@@ -116,7 +197,10 @@ tbody tr:hover {
   color: #06f;
 }
 
-/* Loading / Empty */
+/* =========================
+   LOADING / EMPTY
+========================= */
+
 .loading-text,
 .empty-text {
   text-align: center;
@@ -124,127 +208,17 @@ tbody tr:hover {
   color: #999;
 }
 
-/* Modal */
-.modal-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.65);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  z-index: 1000;
-}
+/* =========================
+   MOBILE
+========================= */
 
-.modal {
-  width: 100%;
-  max-width: 450px;
-  background: #1e1e2d;
-  border-radius: 12px;
-  padding: 25px;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
-}
-
-.modal-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 25px;
-}
-
-.modal-header h2 {
-  margin: 0;
-  font-size: 20px;
-}
-
-.close-btn {
-  background: none;
-  border: none;
-  color: #aaa;
-  font-size: 28px;
-  cursor: pointer;
-}
-
-.close-btn:hover {
-  color: #fff;
-}
-
-/* Form */
-.form-group {
-  margin-bottom: 20px;
-}
-
-.form-group label {
-  display: block;
-  margin-bottom: 8px;
-  font-size: 14px;
-  color: #ccc;
-}
-
-.form-group select {
-  width: 100%;
-  padding: 12px;
-  border: 1px solid #3a3a4d;
-  border-radius: 8px;
-  background: #28283a;
-  color: #fff;
-  font-size: 14px;
-  outline: none;
-}
-
-.form-group select:focus {
-  border-color: #ff8c00;
-}
-
-/* Modal Buttons */
-.modal-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 10px;
-  margin-top: 25px;
-}
-
-.cancel-btn,
-.save-btn {
-  border: none;
-  padding: 11px 18px;
-  border-radius: 8px;
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
-}
-
-.cancel-btn {
-  background: #333344;
-  color: #fff;
-}
-
-.cancel-btn:hover {
-  background: #414155;
-}
-
-.save-btn {
-  background: #ff8c00;
-  color: #fff;
-}
-
-.save-btn:hover {
-  background: #e67e00;
-}
-
-/* Mobile */
 @media (max-width: 768px) {
   .entry-log-page {
     padding: 20px;
   }
 
-  .page-header {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 15px;
-  }
-
-  .add-entry-btn {
-    width: 100%;
+  .scanner-card {
+    padding: 20px 15px;
   }
 
   .entry-log-card {
@@ -255,149 +229,4 @@ tbody tr:hover {
   td {
     white-space: nowrap;
   }
-
-  .modal {
-    width: calc(100% - 30px);
-  }
-}
-
-.checkout-btn {
-  border: none;
-  background: #06f;
-  color: #fff;
-  padding: 7px 12px;
-  border-radius: 6px;
-  font-size: 12px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: 0.2s;
-}
-
-.checkout-btn:hover {
-  background: #0052cc;
-}
-/* Scanner */
-
-.entry-scanner-section {
-  display: flex;
-  justify-content: center;
-  margin-bottom: 25px;
-}
-
-.scanner-card {
-  width: 100%;
-  max-width: 600px;
-  background: #1e1e2d;
-  border-radius: 12px;
-  padding: 25px;
-  text-align: center;
-}
-
-.scanner-card h2 {
-  margin: 0 0 8px;
-}
-
-.scanner-description {
-  color: #999;
-  font-size: 14px;
-  margin-bottom: 20px;
-}
-
-/* QR Scanner */
-
-#qr-reader {
-  width: 100%;
-  max-width: 500px;
-  margin: 0 auto;
-}
-
-#qr-reader video {
-  border-radius: 10px;
-}
-
-#qr-reader__scan_region {
-  border-radius: 10px;
-  overflow: hidden;
-}
-
-#qr-reader__dashboard {
-  margin-top: 15px;
-}
-
-#qr-reader__dashboard button {
-  background: #ff8c00;
-  color: #fff;
-  border: none;
-  padding: 9px 14px;
-  border-radius: 6px;
-  cursor: pointer;
-}
-
-#qr-reader__dashboard select {
-  background: #28283a;
-  color: #fff;
-  border: 1px solid #3a3a4d;
-  padding: 8px;
-  border-radius: 6px;
-}
-
-/* Scan Result */
-
-.scan-result {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  text-align: left;
-  margin-top: 20px;
-  padding: 15px;
-  border-radius: 8px;
-}
-
-.scan-result.checkin {
-  background: rgba(0, 194, 111, 0.12);
-  border: 1px solid rgba(0, 194, 111, 0.3);
-}
-
-.scan-result.checkout {
-  background: rgba(6, 102, 255, 0.12);
-  border: 1px solid rgba(6, 102, 255, 0.3);
-}
-
-.scan-result.error {
-  background: rgba(255, 60, 60, 0.12);
-  border: 1px solid rgba(255, 60, 60, 0.3);
-}
-
-.scan-icon {
-  width: 35px;
-  height: 35px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: bold;
-  background: #333344;
-}
-
-.scan-result p {
-  margin: 5px 0 0;
-  color: #aaa;
-  font-size: 13px;
-}
-
-/* Scan Again */
-
-.scan-again-btn {
-  margin-top: 15px;
-  border: none;
-  background: #ff8c00;
-  color: #fff;
-  padding: 10px 18px;
-  border-radius: 7px;
-  font-weight: 600;
-  cursor: pointer;
-}
-
-.scan-again-btn:hover {
-  background: #e67e00;
 }

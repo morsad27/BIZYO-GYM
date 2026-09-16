@@ -403,3 +403,8 @@ tbody tr:hover {
     width: 100%;
   }
 }
+
+.member-status.restricted {
+  background: rgba(255, 60, 60, 0.15);
+  color: #ff5c5c;
+}

@@ -1,0 +1,224 @@
+.incidents-page {
+  width: 100%;
+  color: #fff;
+}
+
+.incidents-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 30px;
+}
+
+.incidents-header h1 {
+  margin: 0 0 5px;
+  font-size: 28px;
+}
+
+.incidents-header p {
+  margin: 0;
+  color: #999;
+}
+
+.add-incident-btn {
+  border: none;
+  border-radius: 8px;
+  padding: 11px 18px;
+  background: #ff8c00;
+  color: #fff;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.add-incident-btn:hover {
+  opacity: 0.9;
+}
+
+.incidents-card {
+  background: #1e1e2d;
+  border: 1px solid #303044;
+  border-radius: 12px;
+  padding: 25px;
+}
+
+.incidents-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 20px;
+  margin-bottom: 20px;
+}
+
+.incidents-card-header h2 {
+  margin: 0 0 5px;
+  color: #fff;
+  font-size: 18px;
+}
+
+.incidents-card-header p {
+  margin: 0;
+  color: #999;
+  font-size: 13px;
+}
+
+.incidents-card-header input {
+  width: 280px;
+  max-width: 100%;
+  padding: 11px 14px;
+  background: #161622;
+  color: #fff;
+  border: 1px solid #303044;
+  border-radius: 8px;
+  outline: none;
+}
+
+.incidents-card-header input::placeholder {
+  color: #666;
+}
+
+.incidents-card-header input:focus {
+  border-color: #ff8c00;
+}
+
+.table-container {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.incidents-card table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.incidents-card th {
+  text-align: left;
+  padding: 14px;
+  color: #aaa;
+  font-size: 13px;
+  font-weight: 600;
+  background: #28283a;
+  white-space: nowrap;
+}
+
+.incidents-card td {
+  padding: 14px;
+  color: #fff;
+  font-size: 14px;
+  border-bottom: 1px solid #303044;
+  white-space: nowrap;
+}
+
+.incidents-card tbody tr:hover {
+  background: #252536;
+}
+
+.incident-message {
+  text-align: center;
+  padding: 30px !important;
+  color: #999 !important;
+}
+
+.incident-severity,
+.incident-status {
+  display: inline-block;
+  padding: 5px 10px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+/* SEVERITY */
+
+.incident-severity.low {
+  background: rgba(0, 194, 111, 0.15);
+  color: #00c26f;
+}
+
+.incident-severity.medium {
+  background: rgba(255, 140, 0, 0.15);
+  color: #ff8c00;
+}
+
+.incident-severity.high,
+.incident-severity.critical {
+  background: rgba(255, 60, 60, 0.15);
+  color: #ff5c5c;
+}
+
+/* STATUS */
+
+.incident-status.open {
+  background: rgba(255, 140, 0, 0.15);
+  color: #ff8c00;
+}
+
+.incident-status.resolved {
+  background: rgba(0, 194, 111, 0.15);
+  color: #00c26f;
+}
+
+/* MODAL */
+
+.incident-modal {
+  width: 90%;
+  max-width: 500px;
+  background: #1e1e2d;
+  border: 1px solid #303044;
+  color: #fff;
+  padding: 25px;
+  border-radius: 12px;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.incident-modal .form-group input,
+.incident-modal .form-group select,
+.incident-modal .form-group textarea {
+  background: #161622;
+  color: #fff;
+  border: 1px solid #303044;
+}
+
+.incident-modal .form-group input::placeholder,
+.incident-modal .form-group textarea::placeholder {
+  color: #666;
+}
+
+.incident-modal .form-group input:focus,
+.incident-modal .form-group select:focus,
+.incident-modal .form-group textarea:focus {
+  border-color: #ff8c00;
+}
+
+.incident-modal .form-group select option {
+  background: #161622;
+  color: #fff;
+}
+
+/* RESPONSIVE */
+
+@media (max-width: 700px) {
+  .incidents-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 15px;
+  }
+
+  .add-incident-btn {
+    width: 100%;
+  }
+
+  .incidents-card {
+    padding: 15px;
+  }
+
+  .incidents-card-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .incidents-card-header input {
+    width: 100%;
+  }
+}

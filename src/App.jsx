@@ -7,6 +7,8 @@ import DashboardLayout from "./layouts/DashboardLayout";
 import Payments from "./pages/Payments";
 import EntryLog from "./pages/EntryLog";  
 import Equipment from "./pages/Equipment";
+import Incidents from "./pages/Incidents";
+import RestrictedMembers from "./pages/RestrictedMembers";
 
 function App() {
   return (
@@ -21,6 +23,8 @@ function App() {
           <Route path="/entry-log" element={<EntryLog />} />
           <Route path="/payments" element={<Payments />} /> 
           <Route path="/equipment" element={<Equipment />} />
+          <Route path="/incidents" element={<Incidents />} />
+          <Route path="/restricted-members" element={<RestrictedMembers />} />
         </Route>
       </Routes>
     </BrowserRouter>

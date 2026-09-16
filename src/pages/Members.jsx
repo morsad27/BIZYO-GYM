@@ -305,10 +305,14 @@ function Members() {
                     <td>
                       <span
                         className={`member-status ${
-                          member.status === "Active" ? "active" : "inactive"
+                          member.isRestricted
+                            ? "restricted"
+                            : member.status === "Active"
+                              ? "active"
+                              : "inactive"
                         }`}
                       >
-                        {member.status}
+                        {member.isRestricted ? "Restricted" : member.status}
                       </span>
                     </td>
 

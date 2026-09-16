@@ -1,0 +1,280 @@
+.restricted-members-page {
+  width: 100%;
+  color: #fff;
+}
+
+.restricted-members-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 30px;
+}
+
+.restricted-members-header h1 {
+  margin: 0 0 5px;
+  font-size: 28px;
+}
+
+.restricted-members-header p {
+  margin: 0;
+  color: #999;
+}
+
+.restricted-members-card {
+  background: #1e1e2d;
+  border: 1px solid #303044;
+  border-radius: 12px;
+  padding: 25px;
+}
+
+.restricted-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 20px;
+  margin-bottom: 20px;
+}
+
+.restricted-card-header h2 {
+  margin: 0 0 5px;
+  color: #fff;
+  font-size: 18px;
+}
+
+.restricted-card-header p {
+  margin: 0;
+  color: #999;
+  font-size: 13px;
+}
+
+.restricted-card-header input {
+  width: 280px;
+  max-width: 100%;
+  padding: 11px 14px;
+  background: #161622;
+  color: #fff;
+  border: 1px solid #303044;
+  border-radius: 8px;
+  outline: none;
+}
+
+.restricted-card-header input::placeholder {
+  color: #666;
+}
+
+.restricted-card-header input:focus {
+  border-color: #ff8c00;
+}
+
+/* TABLE */
+
+.table-container {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.restricted-members-card table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.restricted-members-card th {
+  text-align: left;
+  padding: 14px;
+  color: #aaa;
+  font-size: 13px;
+  font-weight: 600;
+  background: #28283a;
+  white-space: nowrap;
+}
+
+.restricted-members-card td {
+  padding: 14px;
+  color: #fff;
+  font-size: 14px;
+  border-bottom: 1px solid #303044;
+  white-space: nowrap;
+}
+
+.restricted-members-card tbody tr:hover {
+  background: #252536;
+}
+
+.restricted-message {
+  text-align: center;
+  padding: 30px !important;
+  color: #999 !important;
+}
+
+/* MEMBER */
+
+.restricted-member-name {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.restricted-member-name strong {
+  display: block;
+  color: #fff;
+}
+
+.restricted-member-name span {
+  display: block;
+  margin-top: 4px;
+  color: #999;
+  font-size: 12px;
+}
+
+.restricted-avatar {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: #28283a;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  color: #fff;
+  font-weight: bold;
+}
+
+/* CONTACT */
+
+.contact-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.contact-info span {
+  color: #aaa;
+  font-size: 12px;
+}
+
+/* REASON */
+
+.reason-text {
+  color: #ff8c00;
+}
+
+/* REMOVE BUTTON */
+
+.remove-restriction-btn {
+  border: none;
+  padding: 7px 12px;
+  border-radius: 6px;
+  background: rgba(0, 194, 111, 0.12);
+  color: #00c26f;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.remove-restriction-btn:hover {
+  background: rgba(0, 194, 111, 0.2);
+}
+
+/* MODAL */
+
+.restriction-modal {
+  width: 90%;
+  max-width: 500px;
+  background: #1e1e2d;
+  border: 1px solid #303044;
+  color: #fff;
+  padding: 25px;
+  border-radius: 12px;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.selected-member-info {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 15px;
+  margin-bottom: 20px;
+  background: #161622;
+  border: 1px solid #303044;
+  border-radius: 8px;
+}
+
+.selected-member-info strong {
+  color: #fff;
+  font-size: 15px;
+}
+
+.selected-member-info span {
+  color: #999;
+  font-size: 13px;
+}
+
+.restriction-modal .form-group textarea,
+.restriction-modal .form-group input {
+  background: #161622;
+  color: #fff;
+  border: 1px solid #303044;
+}
+
+.restriction-modal .form-group textarea::placeholder {
+  color: #666;
+}
+
+.restriction-modal .form-group textarea:focus,
+.restriction-modal .form-group input:focus {
+  border-color: #ff8c00;
+}
+
+.form-help {
+  margin-top: 5px;
+  color: #666;
+  font-size: 11px;
+}
+
+/* MODAL BUTTON */
+
+.restrict-btn {
+  padding: 11px 18px;
+  border: none;
+  border-radius: 8px;
+  background: #ff5c5c;
+  color: #fff;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.restrict-btn:hover {
+  opacity: 0.9;
+}
+
+/* RESPONSIVE */
+
+@media (max-width: 700px) {
+  .restricted-card-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .restricted-card-header input {
+    width: 100%;
+  }
+
+  .restricted-members-card {
+    padding: 15px;
+  }
+}
+
+.restrict-member-btn {
+  border: none;
+  border-radius: 8px;
+  padding: 11px 18px;
+  background: #ff8c00;
+  color: #fff;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.restrict-member-btn:hover {
+  opacity: 0.9;
+}

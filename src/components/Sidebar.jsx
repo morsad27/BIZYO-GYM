@@ -58,10 +58,10 @@ function Sidebar() {
         <NavLink to="/activity-logs">
           📋 <span>Activity Logs</span>
         </NavLink>
-
+{/* 
         <NavLink to="/settings">
           ⚙️ <span>Settings</span>
-        </NavLink>
+        </NavLink> */}
       </nav>
 
       <div className="sidebar-bottom">

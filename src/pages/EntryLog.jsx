@@ -11,6 +11,7 @@ import {
   where,
   getDocs,
   getDoc,
+  Timestamp,
 } from "firebase/firestore";
 import { Html5Qrcode } from "html5-qrcode";
 import { db } from "../firebase";
@@ -24,11 +25,35 @@ function EntryLog() {
   const [scanMessage, setScanMessage] = useState("");
   const [scanType, setScanType] = useState("");
 
-  // Scanner reference
   const scannerRef = useRef(null);
-
-  // Prevent duplicate scans
   const scanLock = useRef(false);
+
+  /*
+   * Format Firestore timestamp
+   */
+  const formatDate = (timestamp) => {
+    if (!timestamp) return "-";
+
+    const date = timestamp.toDate();
+
+    return date.toLocaleDateString("en-PH", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+    });
+  };
+
+  const formatTime = (timestamp) => {
+    if (!timestamp) return "-";
+
+    const date = timestamp.toDate();
+
+    return date.toLocaleTimeString("en-PH", {
+      hour: "numeric",
+      minute: "2-digit",
+      second: "2-digit",
+    });
+  };
 
   /*
    * Load Entry Logs
@@ -42,9 +67,9 @@ function EntryLog() {
     const unsubscribe = onSnapshot(
       entryQuery,
       (snapshot) => {
-        const entriesData = snapshot.docs.map((doc) => ({
-          id: doc.id,
-          ...doc.data(),
+        const entriesData = snapshot.docs.map((entryDoc) => ({
+          id: entryDoc.id,
+          ...entryDoc.data(),
         }));
 
         setEntries(entriesData);
@@ -63,7 +88,6 @@ function EntryLog() {
    * Process QR Scan
    */
   const handleScan = async (decodedText) => {
-    // Prevent duplicate scanner callbacks
     if (scanLock.current) {
       return;
     }
@@ -74,15 +98,12 @@ function EntryLog() {
       console.log("Scanned QR:", decodedText);
 
       /*
-       * Find member using Firestore document ID
+       * Find member
        */
       const memberRef = doc(db, "members", decodedText);
 
       const memberSnapshot = await getDoc(memberRef);
 
-      /*
-       * Member doesn't exist
-       */
       if (!memberSnapshot.exists()) {
         setScanResult(null);
         setScanMessage("Member not found.");
@@ -134,10 +155,13 @@ function EntryLog() {
       if (!insideSnapshot.empty) {
         const entryDocument = insideSnapshot.docs[0];
 
-        await updateDoc(doc(db, "entryLogs", entryDocument.id), {
-          checkOut: new Date().toLocaleTimeString(),
-          status: "Completed",
-        });
+        await updateDoc(
+          doc(db, "entryLogs", entryDocument.id),
+          {
+            checkOutAt: Timestamp.now(),
+            status: "Completed",
+          }
+        );
 
         setScanResult(member);
         setScanMessage(
@@ -155,14 +179,11 @@ function EntryLog() {
       /*
        * Not inside → CHECK IN
        */
-      const now = new Date();
-
       await addDoc(collection(db, "entryLogs"), {
         memberId: member.id,
         memberName: member.name,
-        date: now.toLocaleDateString(),
-        checkIn: now.toLocaleTimeString(),
-        checkOut: "",
+        checkInAt: Timestamp.now(),
+        checkOutAt: null,
         status: "Inside",
         createdAt: serverTimestamp(),
       });
@@ -173,9 +194,6 @@ function EntryLog() {
       );
       setScanType("checkin");
 
-      /*
-       * Unlock scanner after 3 seconds
-       */
       setTimeout(() => {
         scanLock.current = false;
       }, 3000);
@@ -203,7 +221,6 @@ function EntryLog() {
     const startScanner = async () => {
       if (!isMounted) return;
 
-      // Prevent duplicate initialization
       if (scannerRef.current) {
         return;
       }
@@ -213,9 +230,6 @@ function EntryLog() {
       scannerRef.current = scanner;
 
       try {
-        /*
-         * Get available cameras
-         */
         const cameras = await Html5Qrcode.getCameras();
 
         if (!isMounted) return;
@@ -226,9 +240,6 @@ function EntryLog() {
           return;
         }
 
-        /*
-         * Prefer back/rear camera if available
-         */
         const backCamera =
           cameras.find((camera) => {
             const label = camera.label.toLowerCase();
@@ -239,9 +250,6 @@ function EntryLog() {
             );
           }) || cameras[0];
 
-        /*
-         * Start camera
-         */
         await scanner.start(
           backCamera.id,
           {
@@ -258,7 +266,7 @@ function EntryLog() {
             handleScan(decodedText);
           },
           () => {
-            // Ignore normal QR scanning errors
+            // Ignore normal scanning errors
           }
         );
       } catch (error) {
@@ -276,7 +284,7 @@ function EntryLog() {
     startScanner();
 
     /*
-     * Cleanup when leaving Entry Log
+     * Cleanup scanner when leaving page
      */
     return () => {
       isMounted = false;
@@ -311,7 +319,7 @@ function EntryLog() {
     <div className="entry-log-page">
       {/* Page Header */}
       <div className="page-header">
-        <div className="header-content">
+        <div>
           <h1>Entry Log</h1>
 
           <p>
@@ -390,12 +398,16 @@ function EntryLog() {
                   <tr key={entry.id}>
                     <td>{entry.memberName}</td>
 
-                    <td>{entry.date}</td>
-
-                    <td>{entry.checkIn}</td>
+                    <td>
+                      {formatDate(entry.checkInAt)}
+                    </td>
 
                     <td>
-                      {entry.checkOut || "-"}
+                      {formatTime(entry.checkInAt)}
+                    </td>
+
+                    <td>
+                      {formatTime(entry.checkOutAt)}
                     </td>
 
                     <td>

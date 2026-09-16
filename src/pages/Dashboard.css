@@ -161,6 +161,14 @@
   display: grid;
   grid-template-columns: 2fr 1fr;
   gap: 25px;
+  margin-bottom: 35px;
+}
+
+.dashboard2-grid {
+  display: grid;
+  /* grid-template-columns: 2fr 1fr; */
+  gap: 25px;
+  margin-bottom: 35px;
 }
 
 .recent-members,
@@ -319,3 +327,4 @@
   padding: 30px;
   color: #777;
 }
+

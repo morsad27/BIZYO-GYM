@@ -1,63 +1,58 @@
 import { useEffect, useState } from "react";
 import {
   collection,
+  onSnapshot,
   addDoc,
+  updateDoc,
   deleteDoc,
   doc,
-  onSnapshot,
   serverTimestamp,
 } from "firebase/firestore";
 import { db } from "../firebase";
+import { logActivity } from "../utils/activityLogger";
 import "./Payments.css";
 
 function Payments() {
-  const [members, setMembers] = useState([]);
   const [payments, setPayments] = useState([]);
+  const [members, setMembers] = useState([]);
+
   const [loading, setLoading] = useState(true);
+  const [membersLoading, setMembersLoading] = useState(true);
+
+  const [search, setSearch] = useState("");
 
   const [showModal, setShowModal] = useState(false);
+  const [editingPayment, setEditingPayment] = useState(null);
 
   const [formData, setFormData] = useState({
     memberId: "",
     amount: "",
+    paymentDate: "",
     paymentMethod: "Cash",
+    membership: "",
     notes: "",
   });
 
-  // Load members in real time
-  useEffect(() => {
-    const unsubscribe = onSnapshot(
-      collection(db, "members"),
-      (snapshot) => {
-        const membersData = snapshot.docs.map((document) => ({
-          id: document.id,
-          ...document.data(),
-        }));
-
-        setMembers(membersData);
-      },
-      (error) => {
-        console.error("Error loading members:", error);
-      }
-    );
-
-    return () => unsubscribe();
-  }, []);
-
-  // Load payments in real time
+  /*
+   * Load Payments
+   */
   useEffect(() => {
     const unsubscribe = onSnapshot(
       collection(db, "payments"),
       (snapshot) => {
-        const paymentsData = snapshot.docs.map((document) => ({
-          id: document.id,
-          ...document.data(),
-        }));
+        const paymentsData = snapshot.docs.map(
+          (paymentDoc) => ({
+            id: paymentDoc.id,
+            ...paymentDoc.data(),
+          }),
+        );
 
-        // Sort newest payments first
         paymentsData.sort((a, b) => {
-          const dateA = a.createdAt?.toDate?.() || new Date(0);
-          const dateB = b.createdAt?.toDate?.() || new Date(0);
+          const dateA =
+            a.createdAt?.toDate?.() || new Date(0);
+
+          const dateB =
+            b.createdAt?.toDate?.() || new Date(0);
 
           return dateB - dateA;
         });
@@ -66,225 +61,843 @@ function Payments() {
         setLoading(false);
       },
       (error) => {
-        console.error("Error loading payments:", error);
+        console.error(
+          "Error loading payments:",
+          error,
+        );
+
         setLoading(false);
-      }
+      },
     );
 
     return () => unsubscribe();
   }, []);
 
-  // Selected member
-  const selectedMember = members.find(
-    (member) => member.id === formData.memberId
-  );
+  /*
+   * Load Members
+   */
+  useEffect(() => {
+    const unsubscribe = onSnapshot(
+      collection(db, "members"),
+      (snapshot) => {
+        const membersData = snapshot.docs.map(
+          (memberDoc) => ({
+            id: memberDoc.id,
+            ...memberDoc.data(),
+          }),
+        );
 
+        membersData.sort((a, b) =>
+          (a.name || "").localeCompare(
+            b.name || "",
+          ),
+        );
+
+        setMembers(membersData);
+        setMembersLoading(false);
+      },
+      (error) => {
+        console.error(
+          "Error loading members:",
+          error,
+        );
+
+        setMembersLoading(false);
+      },
+    );
+
+    return () => unsubscribe();
+  }, []);
+
+  /*
+   * Get selected member
+   */
+  const getSelectedMember = () => {
+    return members.find(
+      (member) =>
+        member.id === formData.memberId,
+    );
+  };
+
+  /*
+   * Calculate total amount already paid
+   * by a member.
+   *
+   * If editing a payment, exclude the
+   * current payment from the calculation.
+   */
+  const getMemberTotalPaid = (
+    memberId,
+    excludePaymentId = null,
+  ) => {
+    return payments.reduce(
+      (total, payment) => {
+        if (
+          payment.memberId !== memberId ||
+          payment.id === excludePaymentId
+        ) {
+          return total;
+        }
+
+        return total + Number(payment.amount || 0);
+      },
+      0,
+    );
+  };
+
+  /*
+   * Get membership price
+   */
+  const getMembershipPrice = (member) => {
+    return Number(
+      member?.membershipPrice || 0,
+    );
+  };
+
+  /*
+   * Get payment status
+   */
+  const getPaymentStatus = (memberId) => {
+    const member = members.find(
+      (item) => item.id === memberId,
+    );
+
+    if (!member) {
+      return {
+        price: 0,
+        paid: 0,
+        remaining: 0,
+        status: "No Payment",
+      };
+    }
+
+    const price = getMembershipPrice(member);
+
+    const paid = getMemberTotalPaid(
+      memberId,
+    );
+
+    const remaining = Math.max(
+      price - paid,
+      0,
+    );
+
+    let status = "No Payment";
+
+    if (price > 0 && paid >= price) {
+      status = "Fully Paid";
+    } else if (paid > 0) {
+      status = "Partially Paid";
+    }
+
+    return {
+      price,
+      paid,
+      remaining,
+      status,
+    };
+  };
+
+  /*
+   * Handle Form Changes
+   */
   const handleChange = (e) => {
     const { name, value } = e.target;
 
-    setFormData((prev) => ({
-      ...prev,
+    if (name === "memberId") {
+      const selectedMember = members.find(
+        (member) => member.id === value,
+      );
+
+      setFormData((previous) => ({
+        ...previous,
+        memberId: value,
+        membership:
+          selectedMember?.membershipName || "",
+      }));
+
+      return;
+    }
+
+    setFormData((previous) => ({
+      ...previous,
       [name]: value,
     }));
   };
 
-  const resetForm = () => {
+  /*
+   * Open Add Payment Modal
+   */
+  const openAddPaymentModal = () => {
+    setEditingPayment(null);
+
     setFormData({
       memberId: "",
       amount: "",
+      paymentDate: new Date()
+        .toISOString()
+        .split("T")[0],
       paymentMethod: "Cash",
+      membership: "",
       notes: "",
     });
-  };
 
-  const openPaymentModal = () => {
-    resetForm();
     setShowModal(true);
   };
 
-  // Record payment
+  /*
+   * Open Edit Payment Modal
+   */
+  const handleEditClick = (payment) => {
+    setEditingPayment(payment);
+
+    setFormData({
+      memberId: payment.memberId || "",
+      amount: payment.amount || "",
+      paymentDate: payment.paymentDate || "",
+      paymentMethod:
+        payment.paymentMethod || "Cash",
+      membership: payment.membership || "",
+      notes: payment.notes || "",
+    });
+
+    setShowModal(true);
+  };
+
+  /*
+   * Add Payment
+   */
   const handleAddPayment = async (e) => {
     e.preventDefault();
 
-    if (!selectedMember) {
+    if (!formData.memberId) {
       alert("Please select a member.");
       return;
     }
 
-    const paymentAmount = Number(formData.amount);
-
-    if (!paymentAmount || paymentAmount <= 0) {
-      alert("Please enter a valid payment amount.");
+    if (
+      !formData.amount ||
+      Number(formData.amount) <= 0
+    ) {
+      alert(
+        "Please enter a valid payment amount.",
+      );
       return;
     }
 
     try {
-      await addDoc(collection(db, "payments"), {
-        memberId: selectedMember.id,
-        memberName: selectedMember.name,
+      const selectedMember =
+        getSelectedMember();
 
-        membershipId: selectedMember.membershipId || "",
-        membershipName:
-          selectedMember.membershipName || "No Membership",
+      if (!selectedMember) {
+        alert(
+          "Selected member was not found.",
+        );
+        return;
+      }
 
-        amount: paymentAmount,
-        paymentMethod: formData.paymentMethod,
-        notes: formData.notes,
+      const newPaymentRef = await addDoc(
+        collection(db, "payments"),
+        {
+          memberId: selectedMember.id,
+          memberName: selectedMember.name,
+          amount: Number(formData.amount),
+          paymentDate:
+            formData.paymentDate,
+          paymentMethod:
+            formData.paymentMethod,
+          membership:
+            formData.membership ||
+            selectedMember.membershipName ||
+            "",
+          notes: formData.notes.trim(),
+          createdAt: serverTimestamp(),
+        },
+      );
 
-        createdAt: serverTimestamp(),
+      const newTotalPaid =
+        getMemberTotalPaid(
+          selectedMember.id,
+        ) + Number(formData.amount);
+
+      const membershipPrice =
+        getMembershipPrice(
+          selectedMember,
+        );
+
+      let paymentStatus = "No Payment";
+
+      if (
+        membershipPrice > 0 &&
+        newTotalPaid >= membershipPrice
+      ) {
+        paymentStatus = "Fully Paid";
+      } else if (newTotalPaid > 0) {
+        paymentStatus = "Partially Paid";
+      }
+
+      await logActivity({
+        action: "Payment Added",
+        description: `Added payment of ₱${Number(
+          formData.amount,
+        ).toLocaleString()} for ${
+          selectedMember.name
+        } - ${paymentStatus}`,
+        targetType: "payment",
+        targetId: newPaymentRef.id,
       });
 
-      alert("Payment recorded successfully!");
+      alert("Payment added successfully!");
 
-      resetForm();
-      setShowModal(false);
+      closeModal();
     } catch (error) {
-      console.error("Error recording payment:", error);
-      alert("Failed to record payment.");
+      console.error(
+        "Error adding payment:",
+        error,
+      );
+
+      alert("Failed to add payment.");
     }
   };
 
-  // Delete payment
-  const handleDeletePayment = async (id) => {
-    const confirmed = window.confirm(
-      "Are you sure you want to delete this payment?"
-    );
+  /*
+   * Update Payment
+   */
+  const handleUpdatePayment = async (e) => {
+    e.preventDefault();
 
-    if (!confirmed) return;
+    if (!formData.memberId) {
+      alert("Please select a member.");
+      return;
+    }
+
+    if (
+      !formData.amount ||
+      Number(formData.amount) <= 0
+    ) {
+      alert(
+        "Please enter a valid payment amount.",
+      );
+      return;
+    }
 
     try {
-      await deleteDoc(doc(db, "payments", id));
+      const selectedMember =
+        getSelectedMember();
 
-      alert("Payment deleted successfully!");
+      if (!selectedMember) {
+        alert(
+          "Selected member was not found.",
+        );
+        return;
+      }
+
+      /*
+       * Calculate the total excluding
+       * the payment currently being edited.
+       */
+      const previousPaymentsTotal =
+        getMemberTotalPaid(
+          selectedMember.id,
+          editingPayment.id,
+        );
+
+      const newTotalPaid =
+        previousPaymentsTotal +
+        Number(formData.amount);
+
+      const membershipPrice =
+        getMembershipPrice(
+          selectedMember,
+        );
+
+      let paymentStatus = "No Payment";
+
+      if (
+        membershipPrice > 0 &&
+        newTotalPaid >= membershipPrice
+      ) {
+        paymentStatus = "Fully Paid";
+      } else if (newTotalPaid > 0) {
+        paymentStatus = "Partially Paid";
+      }
+
+      const paymentRef = doc(
+        db,
+        "payments",
+        editingPayment.id,
+      );
+
+      await updateDoc(paymentRef, {
+        memberId: selectedMember.id,
+        memberName: selectedMember.name,
+        amount: Number(formData.amount),
+        paymentDate:
+          formData.paymentDate,
+        paymentMethod:
+          formData.paymentMethod,
+        membership:
+          formData.membership ||
+          selectedMember.membershipName ||
+          "",
+        notes: formData.notes.trim(),
+      });
+
+      await logActivity({
+        action: "Payment Updated",
+        description: `Updated payment for ${
+          selectedMember.name
+        } - ${paymentStatus}`,
+        targetType: "payment",
+        targetId: editingPayment.id,
+      });
+
+      alert(
+        "Payment updated successfully!",
+      );
+
+      closeModal();
     } catch (error) {
-      console.error("Error deleting payment:", error);
+      console.error(
+        "Error updating payment:",
+        error,
+      );
+
+      alert("Failed to update payment.");
+    }
+  };
+
+  /*
+   * Delete Payment
+   */
+  const handleDeletePayment = async (
+    payment,
+  ) => {
+    const confirmDelete = window.confirm(
+      `Are you sure you want to delete this payment from ${payment.memberName}?`,
+    );
+
+    if (!confirmDelete) return;
+
+    try {
+      await deleteDoc(
+        doc(db, "payments", payment.id),
+      );
+
+      await logActivity({
+        action: "Payment Deleted",
+        description: `Deleted payment of ₱${Number(
+          payment.amount || 0,
+        ).toLocaleString()} for ${
+          payment.memberName ||
+          "Unknown Member"
+        }`,
+        targetType: "payment",
+        targetId: payment.id,
+      });
+
+      alert(
+        "Payment deleted successfully!",
+      );
+    } catch (error) {
+      console.error(
+        "Error deleting payment:",
+        error,
+      );
+
       alert("Failed to delete payment.");
     }
   };
 
-  // Format date
-  const formatDate = (timestamp) => {
-    if (!timestamp?.toDate) {
-      return "Just now";
+  /*
+   * Close Modal
+   */
+  const closeModal = () => {
+    setShowModal(false);
+    setEditingPayment(null);
+
+    setFormData({
+      memberId: "",
+      amount: "",
+      paymentDate: "",
+      paymentMethod: "Cash",
+      membership: "",
+      notes: "",
+    });
+  };
+
+  /*
+   * Format Amount
+   */
+  const formatAmount = (amount) => {
+    return `₱${Number(
+      amount || 0,
+    ).toLocaleString("en-PH", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    })}`;
+  };
+
+  /*
+   * Format Date
+   */
+  const formatDate = (date) => {
+    if (!date) return "-";
+
+    const parsedDate = new Date(date);
+
+    if (
+      Number.isNaN(parsedDate.getTime())
+    ) {
+      return "-";
     }
 
-    return timestamp.toDate().toLocaleDateString();
+    return parsedDate.toLocaleDateString(
+      "en-PH",
+      {
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+      },
+    );
   };
+
+  /*
+   * Get Status Class
+   */
+  const getStatusClass = (status) => {
+    if (status === "Fully Paid") {
+      return "fully-paid";
+    }
+
+    if (status === "Partially Paid") {
+      return "partially-paid";
+    }
+
+    return "no-payment";
+  };
+
+  /*
+   * Filter Payments
+   */
+  const filteredPayments = payments.filter(
+    (payment) => {
+      const searchText =
+        search.toLowerCase();
+
+      const paymentStatus =
+        getPaymentStatus(
+          payment.memberId,
+        ).status;
+
+      return (
+        (payment.memberName || "")
+          .toLowerCase()
+          .includes(searchText) ||
+        (payment.paymentMethod || "")
+          .toLowerCase()
+          .includes(searchText) ||
+        (payment.membership || "")
+          .toLowerCase()
+          .includes(searchText) ||
+        (payment.notes || "")
+          .toLowerCase()
+          .includes(searchText) ||
+        paymentStatus
+          .toLowerCase()
+          .includes(searchText)
+      );
+    },
+  );
+
+  /*
+   * Calculate Total Revenue
+   */
+  const totalRevenue = payments.reduce(
+    (total, payment) =>
+      total + Number(payment.amount || 0),
+    0,
+  );
+
+  /*
+   * Count Fully Paid Members
+   */
+  const fullyPaidMembers =
+    members.filter((member) => {
+      const paymentInfo =
+        getPaymentStatus(member.id);
+
+      return (
+        paymentInfo.status === "Fully Paid"
+      );
+    }).length;
+
+  /*
+   * Count Partially Paid Members
+   */
+  const partiallyPaidMembers =
+    members.filter((member) => {
+      const paymentInfo =
+        getPaymentStatus(member.id);
+
+      return (
+        paymentInfo.status ===
+        "Partially Paid"
+      );
+    }).length;
 
   return (
     <div className="payments-page">
+      {/* Header */}
       <div className="payments-header">
         <div>
           <h1>Payments</h1>
-          <p>Record and manage gym membership payments.</p>
+
+          <p>
+            Manage member payments and
+            transactions.
+          </p>
         </div>
 
         <button
           className="add-payment-btn"
-          onClick={openPaymentModal}
+          onClick={openAddPaymentModal}
         >
-          + Record Payment
+          + Add Payment
         </button>
       </div>
 
-      <div className="payments-card">
-        <div className="payments-card-header">
-          <h2>Payment History</h2>
+      {/* Summary */}
+      <div className="payment-summary">
+        <div className="payment-summary-card">
+          <span>Total Payments</span>
+
+          <strong>
+            {payments.length}
+          </strong>
         </div>
 
-        <div className="table-container">
-          <table>
-            <thead>
-              <tr>
-                <th>Member</th>
-                <th>Membership</th>
-                <th>Amount</th>
-                <th>Payment Method</th>
-                <th>Date</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
+        <div className="payment-summary-card">
+          <span>Total Revenue</span>
 
-            <tbody>
-              {loading ? (
-                <tr>
-                  <td colSpan="6" className="payment-message">
-                    Loading payments...
-                  </td>
-                </tr>
-              ) : payments.length === 0 ? (
-                <tr>
-                  <td colSpan="6" className="payment-message">
-                    No payments found.
-                  </td>
-                </tr>
-              ) : (
-                payments.map((payment) => (
-                  <tr key={payment.id}>
-                    <td>{payment.memberName}</td>
+          <strong className="payment-total-revenue">
+            {formatAmount(totalRevenue)}
+          </strong>
+        </div>
 
-                    <td>
-                      {payment.membershipName ||
-                        "No Membership"}
-                    </td>
+        <div className="payment-summary-card">
+          <span>Fully Paid Members</span>
 
-                    <td className="payment-amount">
-                      ₱
-                      {Number(
-                        payment.amount || 0
-                      ).toLocaleString()}
-                    </td>
+          <strong className="payment-status-full">
+            {fullyPaidMembers}
+          </strong>
+        </div>
 
-                    <td>{payment.paymentMethod}</td>
+        <div className="payment-summary-card">
+          <span>Partially Paid Members</span>
 
-                    <td>
-                      {formatDate(payment.createdAt)}
-                    </td>
-
-                    <td>
-                      <button
-                        className="delete-btn"
-                        onClick={() =>
-                          handleDeletePayment(payment.id)
-                        }
-                      >
-                        Delete
-                      </button>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+          <strong className="payment-status-partial">
+            {partiallyPaidMembers}
+          </strong>
         </div>
       </div>
 
-      {/* PAYMENT MODAL */}
+      {/* Payments Card */}
+      <div className="payments-card">
+        <div className="payments-card-header">
+          <div>
+            <h2>Payment Records</h2>
+
+            <p>
+              View and manage payment
+              transactions.
+            </p>
+          </div>
+
+          <input
+            type="text"
+            placeholder="Search payments..."
+            value={search}
+            onChange={(e) =>
+              setSearch(e.target.value)
+            }
+          />
+        </div>
+
+        {loading ? (
+          <p className="payment-message">
+            Loading payments...
+          </p>
+        ) : filteredPayments.length ===
+          0 ? (
+          <p className="payment-message">
+            No payment records found.
+          </p>
+        ) : (
+          <div className="payments-table-container">
+            <table>
+              <thead>
+                <tr>
+                  <th>Member</th>
+                  <th>Membership</th>
+                  <th>Membership Price</th>
+                  <th>Total Paid</th>
+                  <th>Remaining</th>
+                  <th>Payment Status</th>
+                  <th>Payment Date</th>
+                  <th>Method</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+
+              <tbody>
+                {filteredPayments.map(
+                  (payment) => {
+                    const paymentInfo =
+                      getPaymentStatus(
+                        payment.memberId,
+                      );
+
+                    return (
+                      <tr key={payment.id}>
+                        <td>
+                          <strong>
+                            {payment.memberName ||
+                              "Unknown Member"}
+                          </strong>
+                        </td>
+
+                        <td>
+                          {payment.membership ||
+                            "-"}
+                        </td>
+
+                        <td>
+                          {formatAmount(
+                            paymentInfo.price,
+                          )}
+                        </td>
+
+                        <td>
+                          <span className="payment-amount">
+                            {formatAmount(
+                              paymentInfo.paid,
+                            )}
+                          </span>
+                        </td>
+
+                        <td>
+                          <span
+                            className={
+                              paymentInfo.remaining >
+                              0
+                                ? "payment-remaining"
+                                : "payment-zero"
+                            }
+                          >
+                            {formatAmount(
+                              paymentInfo.remaining,
+                            )}
+                          </span>
+                        </td>
+
+                        <td>
+                          <span
+                            className={`payment-status ${getStatusClass(
+                              paymentInfo.status,
+                            )}`}
+                          >
+                            {paymentInfo.status}
+                          </span>
+                        </td>
+
+                        <td>
+                          {formatDate(
+                            payment.paymentDate,
+                          )}
+                        </td>
+
+                        <td>
+                          <span className="payment-method">
+                            {payment.paymentMethod ||
+                              "-"}
+                          </span>
+                        </td>
+
+                        <td>
+                          <button
+                            className="edit-payment-btn"
+                            onClick={() =>
+                              handleEditClick(
+                                payment,
+                              )
+                            }
+                          >
+                            Edit
+                          </button>
+
+                          <button
+                            className="delete-payment-btn"
+                            onClick={() =>
+                              handleDeletePayment(
+                                payment,
+                              )
+                            }
+                          >
+                            Delete
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  },
+                )}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {/* ADD / EDIT PAYMENT MODAL */}
       {showModal && (
         <div
           className="modal-overlay"
-          onClick={() => setShowModal(false)}
+          onClick={closeModal}
         >
           <div
             className="payment-modal"
-            onClick={(e) => e.stopPropagation()}
+            onClick={(e) =>
+              e.stopPropagation()
+            }
           >
             <div className="modal-header">
-              <h2>Record Payment</h2>
+              <div>
+                <h2>
+                  {editingPayment
+                    ? "Edit Payment"
+                    : "Add Payment"}
+                </h2>
+
+                <p>
+                  Record a member payment.
+                </p>
+              </div>
 
               <button
                 className="close-btn"
-                onClick={() => {
-                  resetForm();
-                  setShowModal(false);
-                }}
+                onClick={closeModal}
               >
                 ×
               </button>
             </div>
 
-            <form onSubmit={handleAddPayment}>
-              {/* MEMBER */}
+            <form
+              onSubmit={
+                editingPayment
+                  ? handleUpdatePayment
+                  : handleAddPayment
+              }
+            >
+              {/* Member */}
               <div className="form-group">
                 <label>Member</label>
 
@@ -293,9 +906,12 @@ function Payments() {
                   value={formData.memberId}
                   onChange={handleChange}
                   required
+                  disabled={membersLoading}
                 >
                   <option value="">
-                    Select a member
+                    {membersLoading
+                      ? "Loading members..."
+                      : "Select a member"}
                   </option>
 
                   {members.map((member) => (
@@ -309,91 +925,201 @@ function Payments() {
                 </select>
               </div>
 
-              {/* MEMBERSHIP INFORMATION */}
-              {selectedMember && (
+              {/* Member Payment Information */}
+              {formData.memberId && (
                 <div className="member-payment-info">
-                  <div>
-                    <span>Membership Plan</span>
-                    <strong>
-                      {selectedMember.membershipName ||
-                        "No Membership"}
-                    </strong>
-                  </div>
+                  {(() => {
+                    const selectedMember =
+                      getSelectedMember();
 
-                  <div>
-                    <span>Membership Price</span>
-                    <strong>
-                      ₱
-                      {Number(
-                        selectedMember.membershipPrice || 0
-                      ).toLocaleString()}
-                    </strong>
-                  </div>
+                    const paymentInfo =
+                      getPaymentStatus(
+                        formData.memberId,
+                      );
+
+                    return (
+                      <>
+                        <div>
+                          <span>
+                            Selected Member
+                          </span>
+
+                          <strong>
+                            {
+                              selectedMember?.name
+                            }
+                          </strong>
+                        </div>
+
+                        <div>
+                          <span>
+                            Membership
+                          </span>
+
+                          <strong>
+                            {formData.membership ||
+                              "No Membership"}
+                          </strong>
+                        </div>
+
+                        <div>
+                          <span>
+                            Membership Price
+                          </span>
+
+                          <strong>
+                            {formatAmount(
+                              paymentInfo.price,
+                            )}
+                          </strong>
+                        </div>
+
+                        <div>
+                          <span>
+                            Already Paid
+                          </span>
+
+                          <strong className="modal-paid">
+                            {formatAmount(
+                              paymentInfo.paid,
+                            )}
+                          </strong>
+                        </div>
+
+                        <div>
+                          <span>
+                            Remaining Balance
+                          </span>
+
+                          <strong className="modal-remaining">
+                            {formatAmount(
+                              paymentInfo.remaining,
+                            )}
+                          </strong>
+                        </div>
+
+                        <div>
+                          <span>
+                            Current Status
+                          </span>
+
+                          <strong
+                            className={`modal-payment-status ${getStatusClass(
+                              paymentInfo.status,
+                            )}`}
+                          >
+                            {
+                              paymentInfo.status
+                            }
+                          </strong>
+                        </div>
+                      </>
+                    );
+                  })()}
                 </div>
               )}
 
-              {/* AMOUNT */}
+              {/* Amount */}
               <div className="form-group">
-                <label>Payment Amount (₱)</label>
+                <label>Amount</label>
 
                 <input
                   type="number"
                   name="amount"
-                  placeholder={
-                    selectedMember
-                      ? `Suggested: ₱${Number(
-                          selectedMember.membershipPrice || 0
-                        ).toLocaleString()}`
-                      : "Enter payment amount"
-                  }
                   value={formData.amount}
                   onChange={handleChange}
+                  placeholder="Enter payment amount"
                   min="1"
+                  step="0.01"
                   required
                 />
               </div>
 
-              {/* PAYMENT METHOD */}
+              {/* Payment Date */}
               <div className="form-group">
-                <label>Payment Method</label>
+                <label>
+                  Payment Date
+                </label>
+
+                <input
+                  type="date"
+                  name="paymentDate"
+                  value={
+                    formData.paymentDate
+                  }
+                  onChange={handleChange}
+                  required
+                />
+              </div>
+
+              {/* Payment Method */}
+              <div className="form-group">
+                <label>
+                  Payment Method
+                </label>
 
                 <select
                   name="paymentMethod"
-                  value={formData.paymentMethod}
+                  value={
+                    formData.paymentMethod
+                  }
                   onChange={handleChange}
+                  required
                 >
-                  <option value="Cash">Cash</option>
-                  <option value="GCash">GCash</option>
+                  <option value="Cash">
+                    Cash
+                  </option>
+
+                  <option value="GCash">
+                    GCash
+                  </option>
+
                   <option value="Bank Transfer">
                     Bank Transfer
                   </option>
-                  <option value="Credit/Debit Card">
-                    Credit/Debit Card
+
+                  <option value="Card">
+                    Card
                   </option>
                 </select>
               </div>
 
-              {/* NOTES */}
+              {/* Membership */}
               <div className="form-group">
-                <label>Notes (Optional)</label>
+                <label>
+                  Membership
+                </label>
+
+                <input
+                  type="text"
+                  name="membership"
+                  value={
+                    formData.membership
+                  }
+                  onChange={handleChange}
+                  placeholder="Membership plan"
+                />
+              </div>
+
+              {/* Notes */}
+              <div className="form-group">
+                <label>Notes</label>
 
                 <textarea
                   name="notes"
                   value={formData.notes}
                   onChange={handleChange}
-                  placeholder="Additional payment information..."
+                  placeholder="Optional notes..."
                   rows="3"
                 />
               </div>
 
+              {/* Modal Actions */}
               <div className="modal-actions">
                 <button
                   type="button"
                   className="cancel-btn"
-                  onClick={() => {
-                    resetForm();
-                    setShowModal(false);
-                  }}
+                  onClick={closeModal}
                 >
                   Cancel
                 </button>
@@ -402,7 +1128,9 @@ function Payments() {
                   type="submit"
                   className="save-btn"
                 >
-                  Record Payment
+                  {editingPayment
+                    ? "Update Payment"
+                    : "Add Payment"}
                 </button>
               </div>
             </form>

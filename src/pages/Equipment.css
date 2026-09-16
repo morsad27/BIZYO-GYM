@@ -1,0 +1,329 @@
+.equipment-page {
+  padding: 30px;
+  color: #fff;
+}
+
+.equipment-page .page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 25px;
+  color: #111;
+}
+
+.equipment-page .page-header h1 {
+  margin: 0 0 5px;
+  font-size: 28px;
+}
+
+.equipment-page .page-header p {
+  margin: 0;
+  color: #999;
+}
+
+.add-equipment-btn {
+  border: none;
+  background: #ff8c00;
+  color: #fff;
+  padding: 11px 18px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.add-equipment-btn:hover {
+  opacity: 0.9;
+}
+
+.equipment-toolbar {
+  margin-bottom: 20px;
+}
+
+.equipment-toolbar input {
+  width: 100%;
+  max-width: 350px;
+  box-sizing: border-box;
+  background: #1e1e2d;
+  border: 1px solid #303044;
+  color: #fff;
+  padding: 12px 14px;
+  border-radius: 8px;
+  outline: none;
+}
+
+.equipment-toolbar input:focus {
+  border-color: #ff8c00;
+}
+
+.equipment-toolbar input::placeholder {
+  color: #777;
+}
+
+.equipment-card {
+  background: #1e1e2d;
+  border-radius: 12px;
+  padding: 20px;
+  overflow: hidden;
+}
+
+.equipment-table-container {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.equipment-card table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.equipment-card thead {
+  background: #28283a;
+}
+
+.equipment-card th {
+  text-align: left;
+  padding: 14px;
+  font-size: 13px;
+  color: #aaa;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.equipment-card td {
+  padding: 14px;
+  border-bottom: 1px solid #303044;
+  font-size: 14px;
+  white-space: nowrap;
+}
+
+.equipment-card tbody tr:hover {
+  background: #252536;
+}
+
+.equipment-status {
+  display: inline-block;
+  padding: 5px 10px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.equipment-status.good {
+  background: rgba(0, 194, 111, 0.15);
+  color: #00c26f;
+}
+
+.equipment-status.needs-maintenance {
+  background: rgba(255, 140, 0, 0.15);
+  color: #ff8c00;
+}
+
+.equipment-status.damaged {
+  background: rgba(255, 60, 60, 0.15);
+  color: #ff5c5c;
+}
+
+.equipment-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.equipment-actions button {
+  border: none;
+  padding: 7px 11px;
+  border-radius: 6px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.edit-equipment-btn {
+  background: #28283a;
+  color: #fff;
+}
+
+.edit-equipment-btn:hover {
+  background: #36364c;
+}
+
+.delete-equipment-btn {
+  background: rgba(255, 60, 60, 0.12);
+  color: #ff5c5c;
+}
+
+.delete-equipment-btn:hover {
+  background: rgba(255, 60, 60, 0.2);
+}
+
+.equipment-message {
+  text-align: center;
+  padding: 40px 20px;
+  color: #999;
+}
+
+/* MODAL */
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.65);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 20px;
+  z-index: 1000;
+}
+
+.equipment-modal {
+  width: 100%;
+  max-width: 600px;
+  max-height: 90vh;
+  overflow-y: auto;
+  background: #1e1e2d;
+  border-radius: 12px;
+  padding: 25px;
+  box-sizing: border-box;
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 25px;
+}
+
+.modal-header h2 {
+  margin: 0 0 5px;
+  font-size: 20px;
+}
+
+.modal-header p {
+  margin: 0;
+  color: #999;
+  font-size: 13px;
+}
+
+.close-modal-btn {
+  border: none;
+  background: transparent;
+  color: #aaa;
+  font-size: 28px;
+  cursor: pointer;
+  line-height: 1;
+}
+
+.close-modal-btn:hover {
+  color: #fff;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 18px;
+}
+
+.form-group label {
+  margin-bottom: 7px;
+  color: #ddd;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.form-group input,
+.form-group select,
+.form-group textarea {
+  width: 100%;
+  box-sizing: border-box;
+  background: #161622;
+  border: 1px solid #303044;
+  border-radius: 7px;
+  color: #fff;
+  padding: 11px 12px;
+  outline: none;
+  font-family: inherit;
+}
+
+.form-group textarea {
+  resize: vertical;
+}
+
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus {
+  border-color: #ff8c00;
+}
+
+.form-group select option {
+  background: #161622;
+}
+
+.form-group input::placeholder,
+.form-group textarea::placeholder {
+  color: #666;
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 15px;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 25px;
+}
+
+.cancel-btn,
+.save-equipment-btn {
+  border: none;
+  padding: 11px 18px;
+  border-radius: 7px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.cancel-btn {
+  background: #28283a;
+  color: #fff;
+}
+
+.save-equipment-btn {
+  background: #ff8c00;
+  color: #fff;
+}
+
+.cancel-btn:hover {
+  background: #36364c;
+}
+
+.save-equipment-btn:hover {
+  opacity: 0.9;
+}
+
+@media (max-width: 768px) {
+  .equipment-page {
+    padding: 20px;
+  }
+
+  .equipment-page .page-header {
+    align-items: flex-start;
+    gap: 15px;
+    flex-direction: column;
+  }
+
+  .add-equipment-btn {
+    width: 100%;
+  }
+
+  .equipment-card {
+    padding: 15px;
+  }
+
+  .form-row {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+}

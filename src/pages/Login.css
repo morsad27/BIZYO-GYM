@@ -3,28 +3,36 @@
   display: flex;
   justify-content: center;
   align-items: center;
-  background: #f5f5f5;
+  padding: 20px;
+  background: #161622;
+  color: #fff;
 }
 
 .login-card {
   width: 100%;
   max-width: 400px;
   padding: 40px;
-  background: white;
+  background: #1e1e2d;
+  border: 1px solid #303044;
   border-radius: 12px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
 }
 
 .login-card h1 {
   text-align: center;
-  margin-bottom: 5px;
+  margin: 0 0 5px;
+  color: #fff;
+  font-size: 28px;
 }
 
 .subtitle {
   text-align: center;
-  color: #777;
-  margin-bottom: 30px;
+  color: #999;
+  margin: 0 0 30px;
+  font-size: 14px;
 }
+
+/* INPUTS */
 
 .input-group {
   display: flex;
@@ -34,55 +42,86 @@
 
 .input-group label {
   margin-bottom: 8px;
-  font-weight: 500;
+  color: #ddd;
+  font-size: 13px;
+  font-weight: 600;
 }
 
 .input-group input {
-  padding: 12px;
-  border: 1px solid #ddd;
-  border-radius: 6px;
-  font-size: 16px;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 12px 14px;
+  background: #161622;
+  color: #fff;
+  border: 1px solid #303044;
+  border-radius: 8px;
+  font-size: 14px;
+  outline: none;
+}
+
+.input-group input::placeholder {
+  color: #666;
 }
 
 .input-group input:focus {
-  outline: none;
-  border-color: #333;
+  border-color: #ff8c00;
 }
+
+/* LOGIN BUTTON */
 
 .login-card button {
   width: 100%;
   padding: 12px;
   border: none;
-  border-radius: 6px;
-  background: #222;
-  color: white;
-  font-size: 16px;
+  border-radius: 8px;
+  background: #ff8c00;
+  color: #fff;
+  font-size: 15px;
+  font-weight: 600;
   cursor: pointer;
+  transition: 0.2s;
 }
 
 .login-card button:hover {
-  background: #444;
+  opacity: 0.9;
 }
+
+.login-card button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* FORGOT PASSWORD */
 
 .forgot-password {
   text-align: center;
   margin-top: 20px;
   font-size: 14px;
-  color: #666;
+  color: #999;
   cursor: pointer;
 }
 
+.forgot-password:hover {
+  color: #ff8c00;
+}
+
+/* ERROR */
+
 .error-message {
-  background-color: #ffe5e5;
-  color: #d32f2f;
+  background: rgba(255, 60, 60, 0.12);
+  color: #ff5c5c;
+  border: 1px solid rgba(255, 60, 60, 0.2);
   padding: 10px;
-  border-radius: 6px;
+  border-radius: 8px;
   margin-bottom: 15px;
   text-align: center;
   font-size: 14px;
 }
 
-.login-card button:disabled {
-  opacity: 0.7;
-  cursor: not-allowed;
+/* RESPONSIVE */
+
+@media (max-width: 500px) {
+  .login-card {
+    padding: 30px 25px;
+  }
 }

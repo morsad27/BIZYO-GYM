@@ -1,6 +1,9 @@
 .payments-page {
   width: 100%;
+  color: #fff;
 }
+
+/* HEADER */
 
 .payments-header {
   display: flex;
@@ -11,29 +14,34 @@
 
 .payments-header h1 {
   margin: 0 0 5px;
+  font-size: 28px;
 }
 
 .payments-header p {
   margin: 0;
-  color: #777;
+  color: #999;
 }
 
 .add-payment-btn {
   border: none;
   border-radius: 8px;
-  padding: 12px 18px;
-  background: #222;
-  color: white;
+  padding: 11px 18px;
+  background: #ff8c00;
+  color: #fff;
   cursor: pointer;
   font-size: 14px;
+  font-weight: 600;
 }
 
 .add-payment-btn:hover {
-  background: #444;
+  opacity: 0.9;
 }
 
+/* PAYMENTS CARD */
+
 .payments-card {
-  background: white;
+  background: #1e1e2d;
+  border: 1px solid #303044;
   border-radius: 12px;
   padding: 25px;
 }
@@ -44,37 +52,74 @@
 
 .payments-card-header h2 {
   margin: 0;
+  color: #fff;
+  font-size: 18px;
+}
+
+/* PAYMENT TABLE */
+
+.payments-card table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.payments-card th {
+  text-align: left;
+  padding: 14px;
+  color: #aaa;
+  font-size: 13px;
+  font-weight: 600;
+  background: #28283a;
+}
+
+.payments-card td {
+  padding: 14px;
+  color: #fff;
+  font-size: 14px;
+  border-bottom: 1px solid #303044;
+}
+
+.payments-card tbody tr:hover {
+  background: #252536;
 }
 
 .payment-amount {
   font-weight: bold;
+  color: #00c26f;
 }
+
+/* MESSAGE */
 
 .payment-message {
   text-align: center;
   padding: 30px !important;
-  color: #777;
+  color: #999;
 }
+
+/* PAYMENT MODAL */
 
 .payment-modal {
   width: 90%;
   max-width: 500px;
-  background: white;
+  background: #1e1e2d;
+  border: 1px solid #303044;
+  color: #fff;
   padding: 25px;
   border-radius: 12px;
   max-height: 90vh;
   overflow-y: auto;
 }
 
+/* MEMBER PAYMENT INFO */
+
 .member-payment-info {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 15px;
-
-  background: #f5f5f5;
+  background: #161622;
+  border: 1px solid #303044;
   padding: 15px;
   border-radius: 8px;
-
   margin-bottom: 18px;
 }
 
@@ -86,18 +131,54 @@
 
 .member-payment-info span {
   font-size: 12px;
-  color: #777;
+  color: #999;
 }
 
 .member-payment-info strong {
   font-size: 15px;
+  color: #fff;
 }
+
+/* FORM */
+
+.payment-modal .form-group label {
+  color: #ddd;
+}
+
+.payment-modal .form-group input,
+.payment-modal .form-group select,
+.payment-modal .form-group textarea {
+  background: #161622;
+  color: #fff;
+  border: 1px solid #303044;
+}
+
+.payment-modal .form-group input::placeholder,
+.payment-modal .form-group textarea::placeholder {
+  color: #666;
+}
+
+.payment-modal .form-group input:focus,
+.payment-modal .form-group select:focus,
+.payment-modal .form-group textarea:focus {
+  border-color: #ff8c00;
+}
+
+/* RESPONSIVE */
 
 @media (max-width: 650px) {
   .payments-header {
     flex-direction: column;
     align-items: flex-start;
     gap: 15px;
+  }
+
+  .add-payment-btn {
+    width: 100%;
+  }
+
+  .payments-card {
+    padding: 15px;
   }
 
   .member-payment-info {

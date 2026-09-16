@@ -68,7 +68,8 @@ function Login() {
         </form>
 
         <p className="forgot-password">
-          Forgot your password?
+          Forgot your password? <br />
+          Contact the administrator to reset it.
         </p>
       </div>
     </div>

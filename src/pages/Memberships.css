@@ -1,6 +1,9 @@
 .memberships-page {
   width: 100%;
+  color: #fff;
 }
+
+/* HEADER */
 
 .memberships-header {
   display: flex;
@@ -11,26 +14,30 @@
 
 .memberships-header h1 {
   margin: 0 0 5px;
+  font-size: 28px;
 }
 
 .memberships-header p {
   margin: 0;
-  color: #777;
+  color: #999;
 }
 
 .add-plan-btn {
   border: none;
   border-radius: 8px;
-  padding: 12px 18px;
-  background: #222;
-  color: white;
+  padding: 11px 18px;
+  background: #ff8c00;
+  color: #fff;
   cursor: pointer;
   font-size: 14px;
+  font-weight: 600;
 }
 
 .add-plan-btn:hover {
-  background: #444;
+  opacity: 0.9;
 }
+
+/* PLANS GRID */
 
 .plans-grid {
   display: grid;
@@ -38,11 +45,17 @@
   gap: 20px;
 }
 
+/* PLAN CARD */
+
 .plan-card {
-  background: white;
+  background: #1e1e2d;
+  border: 1px solid #303044;
   border-radius: 12px;
   padding: 22px;
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+}
+
+.plan-card:hover {
+  border-color: #44445a;
 }
 
 .plan-card-header {
@@ -54,22 +67,30 @@
 
 .plan-card-header h2 {
   margin: 0;
+  color: #fff;
+  font-size: 18px;
 }
 
 .plan-price {
   font-size: 20px;
   font-weight: bold;
+  color: #ff8c00;
 }
 
 .plan-duration {
-  color: #666;
+  color: #999;
   margin: 15px 0 8px;
+  font-size: 13px;
 }
 
 .plan-description {
-  color: #777;
+  color: #aaa;
   min-height: 48px;
+  font-size: 14px;
+  line-height: 1.5;
 }
+
+/* PLAN ACTIONS */
 
 .plan-actions {
   display: flex;
@@ -77,26 +98,69 @@
   margin-top: 20px;
 }
 
-.plans-message {
-  background: white;
-  padding: 30px;
-  border-radius: 12px;
-  color: #777;
+.plan-actions button {
+  border: none;
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
 }
 
+.plan-actions .edit-btn {
+  background: #28283a;
+  color: #fff;
+}
+
+.plan-actions .edit-btn:hover {
+  background: #36364c;
+}
+
+.plan-actions .delete-btn {
+  background: rgba(255, 60, 60, 0.12);
+  color: #ff5c5c;
+}
+
+.plan-actions .delete-btn:hover {
+  background: rgba(255, 60, 60, 0.2);
+}
+
+/* EMPTY / LOADING */
+
+.plans-message {
+  background: #1e1e2d;
+  border: 1px solid #303044;
+  padding: 30px;
+  border-radius: 12px;
+  color: #999;
+  text-align: center;
+}
+
+/* FORM */
+
 .form-group textarea {
+  width: 100%;
+  box-sizing: border-box;
   padding: 12px;
-  border: 1px solid #ddd;
+  background: #161622;
+  color: #fff;
+  border: 1px solid #303044;
   border-radius: 8px;
   resize: vertical;
   font-family: inherit;
   font-size: 14px;
+  outline: none;
+}
+
+.form-group textarea::placeholder {
+  color: #666;
 }
 
 .form-group textarea:focus {
-  outline: none;
-  border-color: #333;
+  border-color: #ff8c00;
 }
+
+/* RESPONSIVE */
 
 @media (max-width: 1000px) {
   .plans-grid {
@@ -109,6 +173,10 @@
     flex-direction: column;
     align-items: flex-start;
     gap: 15px;
+  }
+
+  .add-plan-btn {
+    width: 100%;
   }
 
   .plans-grid {

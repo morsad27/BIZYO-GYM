@@ -1,0 +1,150 @@
+.activity-logs-page {
+  width: 100%;
+  color: #fff;
+}
+
+.activity-logs-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 30px;
+}
+
+.activity-logs-header h1 {
+  margin: 0 0 5px;
+  font-size: 28px;
+}
+
+.activity-logs-header p {
+  margin: 0;
+  color: #999;
+}
+
+.activity-logs-card {
+  background: #1e1e2d;
+  border: 1px solid #303044;
+  border-radius: 12px;
+  padding: 25px;
+}
+
+.activity-logs-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 20px;
+  margin-bottom: 20px;
+}
+
+.activity-logs-card-header h2 {
+  margin: 0 0 5px;
+  color: #fff;
+  font-size: 18px;
+}
+
+.activity-logs-card-header p {
+  margin: 0;
+  color: #999;
+  font-size: 13px;
+}
+
+.activity-logs-card-header input {
+  width: 250px;
+  padding: 11px 14px;
+  background: #161622;
+  color: #fff;
+  border: 1px solid #303044;
+  border-radius: 8px;
+  outline: none;
+}
+
+.activity-logs-card-header input::placeholder {
+  color: #666;
+}
+
+.activity-logs-card-header input:focus {
+  border-color: #ff8c00;
+}
+
+.activity-table-container {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.activity-table-container table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.activity-table-container th {
+  text-align: left;
+  padding: 14px;
+  color: #aaa;
+  font-size: 13px;
+  font-weight: 600;
+  background: #28283a;
+  white-space: nowrap;
+}
+
+.activity-table-container td {
+  padding: 14px;
+  color: #fff;
+  font-size: 14px;
+  border-bottom: 1px solid #303044;
+}
+
+.activity-table-container tbody tr:hover {
+  background: #252536;
+}
+
+.activity-date {
+  color: #fff;
+  font-size: 14px;
+}
+
+.activity-time {
+  margin-top: 3px;
+  color: #777;
+  font-size: 12px;
+}
+
+.activity-action {
+  display: inline-block;
+  padding: 5px 9px;
+  border-radius: 6px;
+  background: rgba(255, 140, 0, 0.12);
+  color: #ff8c00;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.activity-description {
+  color: #ddd;
+}
+
+.activity-target {
+  color: #999;
+  text-transform: capitalize;
+}
+
+.activity-loading,
+.activity-empty {
+  text-align: center;
+  padding: 35px;
+  color: #999;
+}
+
+@media (max-width: 700px) {
+  .activity-logs-card {
+    padding: 15px;
+  }
+
+  .activity-logs-card-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .activity-logs-card-header input {
+    width: auto;
+  }
+}

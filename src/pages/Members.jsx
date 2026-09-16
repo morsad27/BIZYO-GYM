@@ -11,6 +11,7 @@ import {
 import { db } from "../firebase";
 import "./Members.css";
 import { QRCodeSVG } from "qrcode.react";
+import { logActivity } from "../utils/activityLogger";
 
 function Members() {
   const [search, setSearch] = useState("");
@@ -22,7 +23,7 @@ function Members() {
   const [members, setMembers] = useState([]);
   const [membershipPlans, setMembershipPlans] = useState([]);
 
-  //set default values for the form data when adding or editing a member
+  // Set default values for the form data
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -38,7 +39,9 @@ function Members() {
     setSelectedMemberQR(member);
   };
 
-  //fetching membership plans from firebase firestore
+  /*
+   * Fetch membership plans from Firestore
+   */
   useEffect(() => {
     const unsubscribe = onSnapshot(
       collection(db, "memberships"),
@@ -51,21 +54,26 @@ function Members() {
         setMembershipPlans(plansData);
       },
       (error) => {
-        console.error("Error loading membership plans:", error);
+        console.error(
+          "Error loading membership plans:",
+          error,
+        );
       },
     );
 
     return () => unsubscribe();
   }, []);
 
-  //fetching members from firebase firestore para mag display sa members page
+  /*
+   * Fetch members from Firestore
+   */
   useEffect(() => {
     const unsubscribe = onSnapshot(
       collection(db, "members"),
       (snapshot) => {
-        const membersData = snapshot.docs.map((doc) => ({
-          id: doc.id,
-          ...doc.data(),
+        const membersData = snapshot.docs.map((memberDoc) => ({
+          id: memberDoc.id,
+          ...memberDoc.data(),
         }));
 
         setMembers(membersData);
@@ -77,11 +85,12 @@ function Members() {
       },
     );
 
-    // Stop listening when the page is closed
     return () => unsubscribe();
   }, []);
 
-  //delete function para sa members
+  /*
+   * Delete Member
+   */
   const handleDeleteMember = async (id) => {
     const confirmDelete = window.confirm(
       "Are you sure you want to delete this member?",
@@ -90,7 +99,22 @@ function Members() {
     if (!confirmDelete) return;
 
     try {
+      // Find member before deleting
+      const memberToDelete = members.find(
+        (member) => member.id === id,
+      );
+
       await deleteDoc(doc(db, "members", id));
+
+      // Create activity log
+      await logActivity({
+        action: "Member Deleted",
+        description: `Deleted member ${
+          memberToDelete?.name || "Unknown Member"
+        }`,
+        targetType: "member",
+        targetId: id,
+      });
 
       alert("Member deleted successfully!");
     } catch (error) {
@@ -99,7 +123,9 @@ function Members() {
     }
   };
 
-  //edit function para sa members
+  /*
+   * Edit Member
+   */
   const handleEditClick = (member) => {
     setEditingMember(member);
 
@@ -107,16 +133,16 @@ function Members() {
       name: member.name || "",
       email: member.email || "",
       phone: member.phone || "",
-
       membershipId: member.membershipId || "",
-
       status: member.status || "Active",
     });
 
     setShowModal(true);
   };
 
-  //update function to prii
+  /*
+   * Update Member
+   */
   const handleUpdateMember = async (e) => {
     e.preventDefault();
 
@@ -130,7 +156,11 @@ function Members() {
         return;
       }
 
-      const memberRef = doc(db, "members", editingMember.id);
+      const memberRef = doc(
+        db,
+        "members",
+        editingMember.id,
+      );
 
       await updateDoc(memberRef, {
         name: formData.name,
@@ -140,9 +170,19 @@ function Members() {
         membershipId: selectedPlan.id,
         membershipName: selectedPlan.name,
         membershipPrice: Number(selectedPlan.price),
-        membershipDuration: Number(selectedPlan.duration),
+        membershipDuration: Number(
+          selectedPlan.duration,
+        ),
 
         status: formData.status,
+      });
+
+      // Create activity log
+      await logActivity({
+        action: "Member Updated",
+        description: `Updated member information for ${formData.name}`,
+        targetType: "member",
+        targetId: editingMember.id,
       });
 
       alert("Member updated successfully!");
@@ -164,6 +204,9 @@ function Members() {
     }
   };
 
+  /*
+   * Handle Form Changes
+   */
   const handleChange = (e) => {
     setFormData({
       ...formData,
@@ -171,6 +214,9 @@ function Members() {
     });
   };
 
+  /*
+   * Add Member
+   */
   const handleAddMember = async (e) => {
     e.preventDefault();
 
@@ -185,19 +231,33 @@ function Members() {
         return;
       }
 
-      await addDoc(collection(db, "members"), {
-        name: formData.name,
-        email: formData.email,
-        phone: formData.phone,
+      // Create member
+      const newMemberRef = await addDoc(
+        collection(db, "members"),
+        {
+          name: formData.name,
+          email: formData.email,
+          phone: formData.phone,
 
-        // Membership information
-        membershipId: selectedPlan.id,
-        membershipName: selectedPlan.name,
-        membershipPrice: Number(selectedPlan.price),
-        membershipDuration: Number(selectedPlan.duration),
+          // Membership information
+          membershipId: selectedPlan.id,
+          membershipName: selectedPlan.name,
+          membershipPrice: Number(selectedPlan.price),
+          membershipDuration: Number(
+            selectedPlan.duration,
+          ),
 
-        status: formData.status,
-        createdAt: serverTimestamp(),
+          status: formData.status,
+          createdAt: serverTimestamp(),
+        },
+      );
+
+      // Create activity log
+      await logActivity({
+        action: "Member Added",
+        description: `Added ${formData.name} as a new member`,
+        targetType: "member",
+        targetId: newMemberRef.id,
       });
 
       alert("Member added successfully!");
@@ -217,6 +277,9 @@ function Members() {
     }
   };
 
+  /*
+   * Open Add Member Modal
+   */
   const openAddMemberModal = () => {
     setEditingMember(null);
 
@@ -231,23 +294,33 @@ function Members() {
     setShowModal(true);
   };
 
+  /*
+   * Filter Members
+   */
   const filteredMembers = members.filter((member) =>
-    member.name.toLowerCase().includes(search.toLowerCase()),
+    (member.name || "")
+      .toLowerCase()
+      .includes(search.toLowerCase()),
   );
 
   return (
     <div className="members-page">
+      {/* Page Header */}
       <div className="members-header">
         <div>
           <h1>Members</h1>
           <p>Manage your gym members.</p>
         </div>
 
-        <button className="add-member-btn" onClick={openAddMemberModal}>
+        <button
+          className="add-member-btn"
+          onClick={openAddMemberModal}
+        >
           + Add Member
         </button>
       </div>
 
+      {/* Members Card */}
       <div className="members-card">
         <div className="members-toolbar">
           <input
@@ -268,20 +341,26 @@ function Members() {
                 <th>Membership</th>
                 <th>Status</th>
                 <th>Actions</th>
-                <th>Qr Code</th>
+                <th>QR Code</th>
               </tr>
             </thead>
 
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan="6" className="loading-message">
+                  <td
+                    colSpan="7"
+                    className="loading-message"
+                  >
                     Loading members...
                   </td>
                 </tr>
               ) : filteredMembers.length === 0 ? (
                 <tr>
-                  <td colSpan="6" className="empty-message">
+                  <td
+                    colSpan="7"
+                    className="empty-message"
+                  >
                     No members found.
                   </td>
                 </tr>
@@ -291,7 +370,9 @@ function Members() {
                     <td>
                       <div className="member-name">
                         <div className="table-avatar">
-                          {member.name.charAt(0)}
+                          {member.name
+                            ?.charAt(0)
+                            .toUpperCase()}
                         </div>
 
                         {member.name}
@@ -299,7 +380,9 @@ function Members() {
                     </td>
 
                     <td>{member.email}</td>
+
                     <td>{member.phone}</td>
+
                     <td>{member.membershipName}</td>
 
                     <td>
@@ -312,21 +395,27 @@ function Members() {
                               : "inactive"
                         }`}
                       >
-                        {member.isRestricted ? "Restricted" : member.status}
+                        {member.isRestricted
+                          ? "Restricted"
+                          : member.status}
                       </span>
                     </td>
 
                     <td>
                       <button
                         className="edit-btn"
-                        onClick={() => handleEditClick(member)}
+                        onClick={() =>
+                          handleEditClick(member)
+                        }
                       >
                         Edit
                       </button>
 
                       <button
                         className="delete-btn"
-                        onClick={() => handleDeleteMember(member.id)}
+                        onClick={() =>
+                          handleDeleteMember(member.id)
+                        }
                       >
                         Delete
                       </button>
@@ -335,7 +424,9 @@ function Members() {
                     <td>
                       <button
                         className="qr-btn"
-                        onClick={() => handleShowQR(member)}
+                        onClick={() =>
+                          handleShowQR(member)
+                        }
                       >
                         View QR
                       </button>
@@ -348,21 +439,39 @@ function Members() {
         </div>
       </div>
 
-      {/* ADD MEMBER MODAL */}
+      {/* ADD / EDIT MEMBER MODAL */}
       {showModal && (
-        <div className="modal-overlay" onClick={() => setShowModal(false)}>
-          <div className="member-modal" onClick={(e) => e.stopPropagation()}>
+        <div
+          className="modal-overlay"
+          onClick={() => setShowModal(false)}
+        >
+          <div
+            className="member-modal"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="modal-header">
-              <h2> {editingMember ? "Edit Member" : "Add New Member"} </h2>
+              <h2>
+                {editingMember
+                  ? "Edit Member"
+                  : "Add New Member"}
+              </h2>
 
-              <button className="close-btn" onClick={() => setShowModal(false)}>
+              <button
+                className="close-btn"
+                onClick={() => setShowModal(false)}
+              >
                 ×
               </button>
             </div>
 
             <form
-              onSubmit={editingMember ? handleUpdateMember : handleAddMember}
+              onSubmit={
+                editingMember
+                  ? handleUpdateMember
+                  : handleAddMember
+              }
             >
+              {/* Full Name */}
               <div className="form-group">
                 <label>Full Name</label>
 
@@ -376,6 +485,7 @@ function Members() {
                 />
               </div>
 
+              {/* Email */}
               <div className="form-group">
                 <label>Email</label>
 
@@ -389,19 +499,24 @@ function Members() {
                 />
               </div>
 
+              {/* Phone */}
               <div className="form-group">
                 <label>Phone Number</label>
 
                 <input
                   type="text"
+                  inputMode="numeric"
+                  pattern="[0-9]{11}"
+                  maxLength="11"
                   name="phone"
                   value={formData.phone}
                   onChange={handleChange}
-                  placeholder="Enter phone number"
+                  placeholder="Enter 11-digit phone number"
                   required
                 />
               </div>
 
+              {/* Membership */}
               <div className="form-group">
                 <label>Membership Plan</label>
 
@@ -411,16 +526,25 @@ function Members() {
                   onChange={handleChange}
                   required
                 >
-                  <option value="">Select a membership plan</option>
+                  <option value="">
+                    Select a membership plan
+                  </option>
 
                   {membershipPlans.map((plan) => (
-                    <option key={plan.id} value={plan.id}>
-                      {plan.name} - ₱{Number(plan.price).toLocaleString()}
+                    <option
+                      key={plan.id}
+                      value={plan.id}
+                    >
+                      {plan.name} - ₱
+                      {Number(
+                        plan.price,
+                      ).toLocaleString()}
                     </option>
                   ))}
                 </select>
               </div>
 
+              {/* Status */}
               <div className="form-group">
                 <label>Status</label>
 
@@ -429,28 +553,43 @@ function Members() {
                   value={formData.status}
                   onChange={handleChange}
                 >
-                  <option value="Active">Active</option>
-                  <option value="Inactive">Inactive</option>
+                  <option value="Active">
+                    Active
+                  </option>
+
+                  <option value="Inactive">
+                    Inactive
+                  </option>
                 </select>
               </div>
 
+              {/* Modal Actions */}
               <div className="modal-actions">
                 <button
                   type="button"
                   className="cancel-btn"
-                  onClick={() => setShowModal(false)}
+                  onClick={() =>
+                    setShowModal(false)
+                  }
                 >
                   Cancel
                 </button>
 
-                <button type="submit" className="save-btn">
-                  {editingMember ? "Update Member" : "Add Member"}
+                <button
+                  type="submit"
+                  className="save-btn"
+                >
+                  {editingMember
+                    ? "Update Member"
+                    : "Add Member"}
                 </button>
               </div>
             </form>
           </div>
         </div>
       )}
+
+      {/* QR CODE MODAL */}
       {selectedMemberQR && (
         <div className="modal-overlay">
           <div className="qr-modal">
@@ -459,7 +598,9 @@ function Members() {
 
               <button
                 className="close-btn"
-                onClick={() => setSelectedMemberQR(null)}
+                onClick={() =>
+                  setSelectedMemberQR(null)
+                }
               >
                 ×
               </button>
@@ -468,13 +609,20 @@ function Members() {
             <div className="qr-content">
               <h3>{selectedMemberQR.name}</h3>
 
-              <p>Scan this QR code for gym entry.</p>
+              <p>
+                Scan this QR code for gym entry.
+              </p>
 
               <div className="qr-code-container">
-                <QRCodeSVG value={selectedMemberQR.id} size={220} />
+                <QRCodeSVG
+                  value={selectedMemberQR.id}
+                  size={220}
+                />
               </div>
 
-              <small>Member ID: {selectedMemberQR.id}</small>
+              <small>
+                Member ID: {selectedMemberQR.id}
+              </small>
             </div>
           </div>
         </div>

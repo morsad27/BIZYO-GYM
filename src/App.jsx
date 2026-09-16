@@ -9,6 +9,7 @@ import EntryLog from "./pages/EntryLog";
 import Equipment from "./pages/Equipment";
 import Incidents from "./pages/Incidents";
 import RestrictedMembers from "./pages/RestrictedMembers";
+import ActivityLogs from "./pages/ActivityLogs";
 
 function App() {
   return (
@@ -25,6 +26,7 @@ function App() {
           <Route path="/equipment" element={<Equipment />} />
           <Route path="/incidents" element={<Incidents />} />
           <Route path="/restricted-members" element={<RestrictedMembers />} />
+          <Route path="/activity-logs" element={<ActivityLogs />} />
         </Route>
       </Routes>
     </BrowserRouter>

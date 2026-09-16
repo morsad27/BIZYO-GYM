@@ -61,7 +61,7 @@ function EntryLog() {
   useEffect(() => {
     const entryQuery = query(
       collection(db, "entryLogs"),
-      orderBy("createdAt", "desc")
+      orderBy("createdAt", "desc"),
     );
 
     const unsubscribe = onSnapshot(
@@ -78,7 +78,7 @@ function EntryLog() {
       (error) => {
         console.error("Error loading entry logs:", error);
         setLoading(false);
-      }
+      },
     );
 
     return () => unsubscribe();
@@ -122,13 +122,92 @@ function EntryLog() {
       };
 
       /*
+       * Check member restriction
+       *
+       * If restrictionUntil exists and the date has already
+       * passed, the restriction is considered expired.
+       */
+      let restrictionActive = member.isRestricted === true;
+
+      if (restrictionActive && member.restrictionUntil) {
+        const restrictionEnd = new Date(
+          `${member.restrictionUntil}T23:59:59`,
+        );
+
+        const currentDate = new Date();
+
+        if (currentDate > restrictionEnd) {
+          restrictionActive = false;
+
+          /*
+           * Automatically clear expired restriction
+           */
+          try {
+            await updateDoc(
+              doc(db, "members", member.id),
+              {
+                isRestricted: false,
+                restrictionReason: "",
+                restrictionDate: null,
+                restrictionUntil: null,
+              },
+            );
+          } catch (error) {
+            console.error(
+              "Error removing expired restriction:",
+              error,
+            );
+          }
+        }
+      }
+
+      /*
+       * Member is currently restricted
+       */
+      if (restrictionActive) {
+        setScanResult(member);
+
+        const untilText = member.restrictionUntil
+          ? new Date(
+              `${member.restrictionUntil}T00:00:00`,
+            ).toLocaleDateString("en-PH", {
+              year: "numeric",
+              month: "short",
+              day: "numeric",
+            })
+          : null;
+
+        setScanMessage(
+          `Entry denied. ${member.name} is restricted${
+            member.restrictionReason
+              ? `: ${member.restrictionReason}`
+              : "."
+          }${
+            untilText
+              ? ` Restriction until ${untilText}.`
+              : ""
+          }`,
+        );
+
+        setScanType("error");
+
+        setTimeout(() => {
+          scanLock.current = false;
+        }, 3000);
+
+        return;
+      }
+
+      /*
        * Check member status
        */
       if (member.status !== "Active") {
         setScanResult(member);
+
         setScanMessage(
-          `Entry denied. ${member.name} is not an active member.`
+          `Entry denied. ${member.name} is not an active member.`,
         );
+
         setScanType("error");
 
         setTimeout(() => {
@@ -144,7 +223,7 @@ function EntryLog() {
       const insideQuery = query(
         collection(db, "entryLogs"),
         where("memberId", "==", member.id),
-        where("status", "==", "Inside")
+        where("status", "==", "Inside"),
       );
 
       const insideSnapshot = await getDocs(insideQuery);
@@ -160,12 +239,12 @@ function EntryLog() {
           {
             checkOutAt: Timestamp.now(),
             status: "Completed",
-          }
+          },
         );
 
         setScanResult(member);
         setScanMessage(
-          `${member.name} checked out successfully.`
+          `${member.name} checked out successfully.`,
         );
         setScanType("checkout");
 
@@ -190,7 +269,7 @@ function EntryLog() {
 
       setScanResult(member);
       setScanMessage(
-        `${member.name} checked in successfully.`
+        `${member.name} checked in successfully.`,
       );
       setScanType("checkin");
 
@@ -202,7 +281,7 @@ function EntryLog() {
 
       setScanResult(null);
       setScanMessage(
-        "Something went wrong while processing the scan."
+        "Something went wrong while processing the scan.",
       );
       setScanType("error");
 
@@ -267,14 +346,14 @@ function EntryLog() {
           },
           () => {
             // Ignore normal scanning errors
-          }
+          },
         );
       } catch (error) {
         console.error("Scanner start error:", error);
 
         if (isMounted) {
           setScanMessage(
-            "Unable to start the camera. Please check your camera permission."
+            "Unable to start the camera. Please check your camera permission.",
           );
           setScanType("error");
         }

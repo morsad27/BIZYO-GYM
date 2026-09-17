@@ -278,3 +278,266 @@
 .restrict-member-btn:hover {
   opacity: 0.9;
 }
+/* RESTRICTION SUMMARY */
+
+.restriction-summary {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 20px;
+  margin-bottom: 25px;
+}
+
+.restriction-summary-card {
+  background: #1e1e2d;
+  border: 1px solid #303044;
+  border-radius: 12px;
+  padding: 20px;
+}
+
+.restriction-summary-card span {
+  display: block;
+  color: #999;
+  font-size: 13px;
+  margin-bottom: 8px;
+}
+
+.restriction-summary-card strong {
+  color: #fff;
+  font-size: 25px;
+}
+
+/* INCIDENT COUNT */
+
+.incident-count {
+  display: inline-block;
+  padding: 6px 10px;
+  border-radius: 20px;
+  background: rgba(255, 140, 0, 0.12);
+  border: 1px solid rgba(255, 140, 0, 0.25);
+  color: #ff8c00;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+/* MEMBER */
+
+.restricted-member-name {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.restricted-member-name > div:last-child {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.restricted-member-name strong {
+  color: #fff;
+}
+
+.restricted-member-name span {
+  color: #888;
+  font-size: 12px;
+}
+
+.restricted-avatar {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: #28283a;
+  color: #ff8c00;
+  font-weight: 700;
+}
+
+/* MODAL */
+
+.restriction-modal {
+  width: 90%;
+  max-width: 600px;
+  max-height: 90vh;
+  overflow-y: auto;
+  padding: 25px;
+  background: #1e1e2d;
+  border: 1px solid #303044;
+  border-radius: 12px;
+  color: #fff;
+}
+
+.restriction-modal .modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 20px;
+}
+
+.restriction-modal .modal-header h2 {
+  margin: 0 0 5px;
+}
+
+.restriction-modal .modal-header p {
+  margin: 0;
+  color: #999;
+  font-size: 13px;
+}
+
+/* INCIDENT HISTORY */
+
+.incident-history {
+  margin-bottom: 20px;
+  padding: 15px;
+  background: #161622;
+  border: 1px solid #303044;
+  border-radius: 8px;
+}
+
+.incident-history-header h3 {
+  margin: 0 0 5px;
+  color: #fff;
+  font-size: 15px;
+}
+
+.incident-history-header p {
+  margin: 0 0 15px;
+  color: #999;
+  font-size: 12px;
+}
+
+.incident-history-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.incident-history-item {
+  padding: 12px;
+  background: #1e1e2d;
+  border: 1px solid #303044;
+  border-radius: 8px;
+}
+
+.incident-history-title {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.incident-history-title strong {
+  color: #fff;
+  font-size: 14px;
+}
+
+.incident-history-details {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  color: #999;
+  font-size: 12px;
+}
+
+.incident-history-item p {
+  margin: 10px 0 0;
+  padding-top: 10px;
+  border-top: 1px solid #303044;
+  color: #aaa;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+/* INCIDENT SEVERITY */
+
+.incident-severity {
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.incident-severity.low {
+  background: rgba(0, 194, 111, 0.12);
+  color: #00c26f;
+}
+
+.incident-severity.medium {
+  background: rgba(255, 140, 0, 0.12);
+  color: #ff8c00;
+}
+
+.incident-severity.high,
+.incident-severity.critical {
+  background: rgba(255, 92, 92, 0.12);
+  color: #ff5c5c;
+}
+
+/* FORM */
+
+.restriction-modal .form-group {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 18px;
+}
+
+.restriction-modal .form-group label {
+  margin-bottom: 7px;
+  color: #ddd;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.restriction-modal .form-group select,
+.restriction-modal .form-group input,
+.restriction-modal .form-group textarea {
+  box-sizing: border-box;
+  width: 100%;
+  padding: 11px 12px;
+  background: #161622;
+  color: #fff;
+  border: 1px solid #303044;
+  border-radius: 8px;
+  outline: none;
+  font-size: 14px;
+}
+
+.restriction-modal .form-group select:focus,
+.restriction-modal .form-group input:focus,
+.restriction-modal .form-group textarea:focus {
+  border-color: #ff8c00;
+}
+
+.restriction-modal .form-group textarea {
+  resize: vertical;
+}
+
+.restriction-modal .form-group small {
+  margin-top: 6px;
+  color: #666;
+  font-size: 11px;
+}
+
+/* RESPONSIVE */
+
+@media (max-width: 700px) {
+  .restriction-summary {
+    grid-template-columns: 1fr;
+  }
+
+  .restricted-members-card {
+    padding: 15px;
+  }
+
+  .restriction-modal {
+    padding: 20px;
+  }
+
+  .incident-history-details {
+    flex-direction: column;
+    gap: 5px;
+  }
+}

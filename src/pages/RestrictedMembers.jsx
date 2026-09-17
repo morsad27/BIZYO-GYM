@@ -11,131 +11,156 @@ import "./RestrictedMembers.css";
 
 function RestrictedMembers() {
   const [members, setMembers] = useState([]);
-  const [allMembers, setAllMembers] = useState([]);
+  const [incidents, setIncidents] = useState([]);
 
   const [loading, setLoading] = useState(true);
-  const [membersLoading, setMembersLoading] = useState(true);
+  const [incidentsLoading, setIncidentsLoading] = useState(true);
 
   const [search, setSearch] = useState("");
 
   const [showModal, setShowModal] = useState(false);
 
-  const [formData, setFormData] = useState({
-    memberId: "",
-    restrictionReason: "",
-    restrictionUntil: "",
-  });
+  const [selectedMember, setSelectedMember] = useState(null);
 
-  /* =========================
-     LOAD ALL MEMBERS
-  ========================= */
+  const [restrictionReason, setRestrictionReason] = useState("");
 
+  const [restrictionUntil, setRestrictionUntil] = useState("");
+
+  /*
+   * Load Members
+   */
   useEffect(() => {
     const unsubscribe = onSnapshot(
       collection(db, "members"),
       (snapshot) => {
-        const membersData = snapshot.docs.map((item) => ({
-          id: item.id,
-          ...item.data(),
+        const membersData = snapshot.docs.map((memberDoc) => ({
+          id: memberDoc.id,
+          ...memberDoc.data(),
         }));
 
         membersData.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
 
-        setAllMembers(membersData);
-        setMembersLoading(false);
-
-        const restrictedMembers = membersData.filter(
-          (member) => member.isRestricted === true,
-        );
-
-        setMembers(restrictedMembers);
+        setMembers(membersData);
         setLoading(false);
       },
       (error) => {
         console.error("Error loading members:", error);
 
         setLoading(false);
-        setMembersLoading(false);
       },
     );
 
     return () => unsubscribe();
   }, []);
 
-  /* =========================
-     SEARCH
-  ========================= */
+  /*
+   * Load Incidents
+   */
+  useEffect(() => {
+    const unsubscribe = onSnapshot(
+      collection(db, "incidents"),
+      (snapshot) => {
+        const incidentsData = snapshot.docs.map((incidentDoc) => ({
+          id: incidentDoc.id,
+          ...incidentDoc.data(),
+        }));
 
-  const filteredMembers = members.filter((member) => {
-    const searchText = search.toLowerCase();
+        setIncidents(incidentsData);
+        setIncidentsLoading(false);
+      },
+      (error) => {
+        console.error("Error loading incidents:", error);
 
-    return (
-      member.name?.toLowerCase().includes(searchText) ||
-      member.email?.toLowerCase().includes(searchText) ||
-      member.phone?.toLowerCase().includes(searchText) ||
-      member.restrictionReason?.toLowerCase().includes(searchText)
+        setIncidentsLoading(false);
+      },
     );
-  });
 
-  /* =========================
-     FORM
-  ========================= */
+    return () => unsubscribe();
+  }, []);
 
-  const handleChange = (event) => {
-    const { name, value } = event.target;
-
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
+  /*
+   * Get incidents belonging to a member
+   */
+  const getMemberIncidents = (memberId) => {
+    return incidents.filter((incident) => incident.memberId === memberId);
   };
 
-  /* =========================
-     OPEN RESTRICT MODAL
-  ========================= */
+  /*
+   * Get incident count
+   */
+  const getIncidentCount = (memberId) => {
+    return getMemberIncidents(memberId).length;
+  };
 
-  const handleOpenModal = () => {
-    setFormData({
-      memberId: "",
-      restrictionReason: "",
-      restrictionUntil: "",
-    });
+  /*
+   * Open Restrict Modal
+   */
+  const openRestrictModal = (member) => {
+    setSelectedMember(member);
+
+    setRestrictionReason("");
+
+    setRestrictionUntil("");
 
     setShowModal(true);
   };
 
-  /* =========================
-     RESTRICT MEMBER
-  ========================= */
+  /*
+   * Close Restrict Modal
+   */
+  const closeModal = () => {
+    setShowModal(false);
 
-  const handleRestrict = async (event) => {
-    event.preventDefault();
+    setSelectedMember(null);
 
-    if (!formData.memberId) {
-      alert("Please select a member.");
+    setRestrictionReason("");
+
+    setRestrictionUntil("");
+  };
+
+  /*
+   * Restrict Member
+   */
+  const handleRestrict = async (e) => {
+    e.preventDefault();
+
+    if (!selectedMember) {
       return;
     }
 
-    if (!formData.restrictionReason.trim()) {
+    /*
+     * Double-check that the member
+     * still has incident history.
+     */
+    const memberIncidents = getMemberIncidents(selectedMember.id);
+
+    if (memberIncidents.length === 0) {
+      alert(
+        "This member cannot be restricted because they have no incident history.",
+      );
+
+      closeModal();
+
+      return;
+    }
+
+    if (!restrictionReason.trim()) {
       alert("Please enter a restriction reason.");
+
       return;
     }
 
     try {
-      await updateDoc(doc(db, "members", formData.memberId), {
+      await updateDoc(doc(db, "members", selectedMember.id), {
         isRestricted: true,
-        restrictionReason: formData.restrictionReason.trim(),
+        restrictionReason: restrictionReason.trim(),
         restrictionDate: serverTimestamp(),
-        restrictionUntil: formData.restrictionUntil || null,
+        restrictionUntil: restrictionUntil || null,
       });
 
-      setShowModal(false);
+      alert(`${selectedMember.name} has been restricted.`);
 
-      setFormData({
-        memberId: "",
-        restrictionReason: "",
-        restrictionUntil: "",
-      });
+      closeModal();
     } catch (error) {
       console.error("Error restricting member:", error);
 
@@ -143,16 +168,17 @@ function RestrictedMembers() {
     }
   };
 
-  /* =========================
-     REMOVE RESTRICTION
-  ========================= */
-
+  /*
+   * Remove Restriction
+   */
   const handleRemoveRestriction = async (member) => {
-    const confirmed = window.confirm(
+    const confirmRemove = window.confirm(
       `Remove the restriction from ${member.name}?`,
     );
 
-    if (!confirmed) return;
+    if (!confirmRemove) {
+      return;
+    }
 
     try {
       await updateDoc(doc(db, "members", member.id), {
@@ -161,6 +187,8 @@ function RestrictedMembers() {
         restrictionDate: null,
         restrictionUntil: null,
       });
+
+      alert(`Restriction removed from ${member.name}.`);
     } catch (error) {
       console.error("Error removing restriction:", error);
 
@@ -168,222 +196,358 @@ function RestrictedMembers() {
     }
   };
 
+  /*
+   * Only members with incident history
+   * can be selected for restriction.
+   */
+  const eligibleMembers = members.filter(
+    (member) => !member.isRestricted && getIncidentCount(member.id) > 0,
+  );
+
+  /*
+   * Currently restricted members
+   */
+  const restrictedMembers = members.filter(
+    (member) => member.isRestricted === true,
+  );
+
+  /*
+   * Search restricted members
+   */
+  const filteredRestrictedMembers = restrictedMembers.filter((member) => {
+    const searchText = search.toLowerCase();
+
+    return (
+      (member.name || "").toLowerCase().includes(searchText) ||
+      (member.email || "").toLowerCase().includes(searchText) ||
+      (member.phone || "").toLowerCase().includes(searchText) ||
+      (member.restrictionReason || "").toLowerCase().includes(searchText)
+    );
+  });
+
+  /*
+   * Format restriction date
+   */
+  const formatRestrictionDate = (timestamp) => {
+    if (!timestamp?.toDate) {
+      return "-";
+    }
+
+    return timestamp.toDate().toLocaleDateString("en-PH", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+    });
+  };
+
+  /*
+   * Format restriction until date
+   */
+  const formatRestrictionUntil = (date) => {
+    if (!date) {
+      return "No end date";
+    }
+
+    const parsedDate = new Date(`${date}T00:00:00`);
+
+    if (Number.isNaN(parsedDate.getTime())) {
+      return "-";
+    }
+
+    return parsedDate.toLocaleDateString("en-PH", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+    });
+  };
+
   return (
     <div className="restricted-members-page">
-      {/* HEADER */}
-
+      {/* Header */}
       <div className="restricted-members-header">
         <div>
           <h1>Restricted Members</h1>
 
-          <p>Manage members who currently have access restrictions.</p>
+          <p>Manage members who have been restricted because of incidents.</p>
         </div>
 
-        <button className="restrict-member-btn" onClick={handleOpenModal}>
+        <button
+          className="restrict-member-btn"
+          onClick={() => {
+            if (eligibleMembers.length === 0) {
+              alert(
+                "There are no members with incident history available for restriction.",
+              );
+
+              return;
+            }
+
+            setSelectedMember(null);
+            setRestrictionReason("");
+            setRestrictionUntil("");
+            setShowModal(true);
+          }}
+        >
           + Restrict Member
         </button>
       </div>
 
-      {/* CARD */}
+      {/* Summary */}
+      <div className="restriction-summary">
+        <div className="restriction-summary-card">
+          <span>Restricted Members</span>
 
+          <strong>{restrictedMembers.length}</strong>
+        </div>
+
+        <div className="restriction-summary-card">
+          <span>Members With Incidents</span>
+
+          <strong>
+            {members.filter((member) => getIncidentCount(member.id) > 0).length}
+          </strong>
+        </div>
+      </div>
+
+      {/* Main Card */}
       <div className="restricted-members-card">
         <div className="restricted-card-header">
           <div>
-            <h2>Restricted Members</h2>
+            <h2>Restricted Member List</h2>
 
-            <p>Members currently restricted from gym access.</p>
+            <p>Members currently restricted from gym entry.</p>
           </div>
 
           <input
             type="text"
+            placeholder="Search restricted members..."
             value={search}
-            onChange={(event) => setSearch(event.target.value)}
-            placeholder="Search members..."
+            onChange={(e) => setSearch(e.target.value)}
           />
         </div>
 
-        {/* TABLE */}
-
-        <div className="table-container">
-          <table>
-            <thead>
-              <tr>
-                <th>Member</th>
-                <th>Contact</th>
-                <th>Reason</th>
-                <th>Restricted Since</th>
-                <th>Until</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-
-            <tbody>
-              {loading ? (
+        {loading || incidentsLoading ? (
+          <p className="restriction-message">Loading restricted members...</p>
+        ) : filteredRestrictedMembers.length === 0 ? (
+          <p className="restriction-message">No restricted members found.</p>
+        ) : (
+          <div className="restricted-table-container">
+            <table>
+              <thead>
                 <tr>
-                  <td colSpan="6" className="restricted-message">
-                    Loading restricted members...
-                  </td>
+                  <th>Member</th>
+                  <th>Contact</th>
+                  <th>Incidents</th>
+                  <th>Reason</th>
+                  <th>Restricted Since</th>
+                  <th>Until</th>
+                  <th>Actions</th>
                 </tr>
-              ) : filteredMembers.length === 0 ? (
-                <tr>
-                  <td colSpan="6" className="restricted-message">
-                    No restricted members found.
-                  </td>
-                </tr>
-              ) : (
-                filteredMembers.map((member) => (
-                  <tr key={member.id}>
-                    <td>
-                      <div className="restricted-member-name">
-                        <div className="restricted-avatar">
-                          {member.name?.charAt(0).toUpperCase()}
+              </thead>
+
+              <tbody>
+                {filteredRestrictedMembers.map((member) => {
+                  const memberIncidents = getMemberIncidents(member.id);
+
+                  return (
+                    <tr key={member.id}>
+                      <td>
+                        <div className="restricted-member-name">
+                          <div className="restricted-avatar">
+                            {member.name?.charAt(0).toUpperCase()}
+                          </div>
+
+                          <div>
+                            <strong>{member.name}</strong>
+
+                            <span>{member.email || "-"}</span>
+                          </div>
                         </div>
+                      </td>
 
-                        <div>
-                          <strong>{member.name}</strong>
+                      <td>{member.phone || "-"}</td>
 
-                          <span>{member.membership || "No Membership"}</span>
-                        </div>
-                      </div>
-                    </td>
+                      <td>
+                        <span className="incident-count">
+                          {memberIncidents.length}{" "}
+                          {memberIncidents.length === 1
+                            ? "Incident"
+                            : "Incidents"}
+                        </span>
+                      </td>
 
-                    <td>
-                      <div className="contact-info">
-                        <span>{member.email || "-"}</span>
+                      <td>
+                        <span className="restriction-reason">
+                          {member.restrictionReason || "-"}
+                        </span>
+                      </td>
 
-                        <span>{member.phone || "-"}</span>
-                      </div>
-                    </td>
+                      <td>{formatRestrictionDate(member.restrictionDate)}</td>
 
-                    <td>
-                      <span className="reason-text">
-                        {member.restrictionReason || "-"}
-                      </span>
-                    </td>
+                      <td>
+                        {member.restrictionUntil
+                          ? formatRestrictionUntil(member.restrictionUntil)
+                          : "No end date"}
+                      </td>
 
-                    <td>
-                      {member.restrictionDate?.toDate?.()
-                        ? member.restrictionDate
-                            .toDate()
-                            .toLocaleDateString("en-PH", {
-                              year: "numeric",
-                              month: "short",
-                              day: "numeric",
-                            })
-                        : "-"}
-                    </td>
-
-                    <td>
-                      {member.restrictionUntil
-                        ? new Date(
-                            `${member.restrictionUntil}T00:00:00`,
-                          ).toLocaleDateString("en-PH", {
-                            year: "numeric",
-                            month: "short",
-                            day: "numeric",
-                          })
-                        : "No end date"}
-                    </td>
-
-                    <td>
-                      <button
-                        className="remove-restriction-btn"
-                        onClick={() => handleRemoveRestriction(member)}
-                      >
-                        Remove Restriction
-                      </button>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+                      <td>
+                        <button
+                          className="remove-restriction-btn"
+                          onClick={() => handleRemoveRestriction(member)}
+                        >
+                          Remove
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
 
       {/* RESTRICT MEMBER MODAL */}
-
       {showModal && (
-        <div className="modal-overlay">
-          <div className="restriction-modal">
+        <div className="modal-overlay" onClick={closeModal}>
+          <div
+            className="restriction-modal"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="modal-header">
-              <h2>Restrict Member</h2>
+              <div>
+                <h2>Restrict Member</h2>
 
-              <button className="close-btn" onClick={() => setShowModal(false)}>
+                <p>Only members with incident history can be restricted.</p>
+              </div>
+
+              <button className="close-btn" onClick={closeModal}>
                 ×
               </button>
             </div>
 
             <form onSubmit={handleRestrict}>
-              {/* MEMBER */}
-
+              {/* Member Selection */}
               <div className="form-group">
                 <label>Member</label>
 
                 <select
-                  name="memberId"
-                  value={formData.memberId}
-                  onChange={handleChange}
+                  value={selectedMember?.id || ""}
+                  onChange={(e) => {
+                    const member = eligibleMembers.find(
+                      (item) => item.id === e.target.value,
+                    );
+
+                    setSelectedMember(member || null);
+                  }}
                   required
                 >
-                  <option value="">
-                    {membersLoading ? "Loading members..." : "Select a member"}
-                  </option>
+                  <option value="">Select member</option>
 
-                  {allMembers
-                    .filter((member) => !member.isRestricted)
-                    .map((member) => (
-                      <option key={member.id} value={member.id}>
-                        {member.name}
-                      </option>
-                    ))}
+                  {eligibleMembers.map((member) => (
+                    <option key={member.id} value={member.id}>
+                      {member.name} — {getIncidentCount(member.id)}{" "}
+                      {getIncidentCount(member.id) === 1
+                        ? "incident"
+                        : "incidents"}
+                    </option>
+                  ))}
                 </select>
               </div>
 
-              {/* REASON */}
+              {/* Selected Member Incident History */}
+              {selectedMember && (
+                <div className="incident-history">
+                  <div className="incident-history-header">
+                    <div>
+                      <h3>Incident History</h3>
 
+                      <p>
+                        {selectedMember.name} has{" "}
+                        {getIncidentCount(selectedMember.id)} recorded{" "}
+                        {getIncidentCount(selectedMember.id) === 1
+                          ? "incident"
+                          : "incidents"}
+                        .
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="incident-history-list">
+                    {getMemberIncidents(selectedMember.id).map((incident) => (
+                      <div className="incident-history-item" key={incident.id}>
+                        <div className="incident-history-title">
+                          <strong>
+                            {incident.title || "Untitled Incident"}
+                          </strong>
+
+                          <span
+                            className={`incident-severity ${(
+                              incident.severity || ""
+                            )
+                              .toLowerCase()
+                              .replace(/\s+/g, "-")}`}
+                          >
+                            {incident.severity || "Unknown"}
+                          </span>
+                        </div>
+
+                        <div className="incident-history-details">
+                          <span>Type: {incident.type || "-"}</span>
+
+                          <span>Date: {incident.date || "-"}</span>
+
+                          <span>Status: {incident.status || "-"}</span>
+                        </div>
+
+                        {incident.description && <p>{incident.description}</p>}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Restriction Reason */}
               <div className="form-group">
-                <label>Reason</label>
+                <label>Restriction Reason</label>
 
                 <textarea
-                  name="restrictionReason"
-                  value={formData.restrictionReason}
-                  onChange={handleChange}
-                  placeholder="Enter the reason for restriction..."
+                  value={restrictionReason}
+                  onChange={(e) => setRestrictionReason(e.target.value)}
+                  placeholder="Enter reason for restricting this member..."
                   rows="4"
                   required
                 />
               </div>
 
-              {/* END DATE */}
-
+              {/* Restriction Until */}
               <div className="form-group">
                 <label>Restriction Until</label>
 
                 <input
                   type="date"
-                  name="restrictionUntil"
-                  value={formData.restrictionUntil}
-                  onChange={handleChange}
+                  value={restrictionUntil}
+                  onChange={(e) => setRestrictionUntil(e.target.value)}
                 />
 
-                <small className="form-help">
-                  Leave empty if there is no end date.
-                </small>
+                <small>Leave empty for an indefinite restriction.</small>
               </div>
 
-              {/* ACTIONS */}
-
+              {/* Actions */}
               <div className="modal-actions">
                 <button
                   type="button"
                   className="cancel-btn"
-                  onClick={() => setShowModal(false)}
+                  onClick={closeModal}
                 >
                   Cancel
                 </button>
 
-                <button type="submit" className="restrict-btn">
+                <button
+                  type="submit"
+                  className="save-btn"
+                  disabled={!selectedMember}
+                >
                   Restrict Member
                 </button>
               </div>

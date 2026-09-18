@@ -123,70 +123,58 @@ function EntryLog() {
 
       /*
        * Check member restriction
-       *
-       * If restrictionUntil exists and the date has already
-       * passed, the restriction is considered expired.
        */
       let restrictionActive = member.isRestricted === true;
 
       if (restrictionActive && member.restrictionUntil) {
-        const restrictionEnd = new Date(
-          `${member.restrictionUntil}T23:59:59`,
-        );
+        const restrictionEnd = new Date(`${member.restrictionUntil}T23:59:59`);
 
         const currentDate = new Date();
 
+        /*
+         * Restriction has expired
+         */
         if (currentDate > restrictionEnd) {
           restrictionActive = false;
 
-          /*
-           * Automatically clear expired restriction
-           */
           try {
-            await updateDoc(
-              doc(db, "members", member.id),
-              {
-                isRestricted: false,
-                restrictionReason: "",
-                restrictionDate: null,
-                restrictionUntil: null,
-              },
+            await updateDoc(doc(db, "members", member.id), {
+              isRestricted: false,
+              restrictionReason: "",
+              restrictionDate: null,
+              restrictionUntil: null,
+            });
+
+            console.log(
+              `Restriction automatically removed from ${member.name}`,
             );
           } catch (error) {
-            console.error(
-              "Error removing expired restriction:",
-              error,
-            );
+            console.error("Error removing expired restriction:", error);
           }
         }
       }
 
       /*
-       * Member is currently restricted
+       * Member is restricted
        */
       if (restrictionActive) {
         setScanResult(member);
 
         const untilText = member.restrictionUntil
-          ? new Date(
-              `${member.restrictionUntil}T00:00:00`,
-            ).toLocaleDateString("en-PH", {
-              year: "numeric",
-              month: "short",
-              day: "numeric",
-            })
+          ? new Date(`${member.restrictionUntil}T00:00:00`).toLocaleDateString(
+              "en-PH",
+              {
+                year: "numeric",
+                month: "short",
+                day: "numeric",
+              },
+            )
           : null;
 
         setScanMessage(
           `Entry denied. ${member.name} is restricted${
-            member.restrictionReason
-              ? `: ${member.restrictionReason}`
-              : "."
-          }${
-            untilText
-              ? ` Restriction until ${untilText}.`
-              : ""
-          }`,
+            member.restrictionReason ? `: ${member.restrictionReason}` : "."
+          }${untilText ? ` Restriction until ${untilText}.` : " No end date."}`,
         );
 
         setScanType("error");
@@ -204,9 +192,7 @@ function EntryLog() {
       if (member.status !== "Active") {
         setScanResult(member);
 
-        setScanMessage(
-          `Entry denied. ${member.name} is not an active member.`,
-        );
+        setScanMessage(`Entry denied. ${member.name} is not an active member.`);
 
         setScanType("error");
 
@@ -234,18 +220,13 @@ function EntryLog() {
       if (!insideSnapshot.empty) {
         const entryDocument = insideSnapshot.docs[0];
 
-        await updateDoc(
-          doc(db, "entryLogs", entryDocument.id),
-          {
-            checkOutAt: Timestamp.now(),
-            status: "Completed",
-          },
-        );
+        await updateDoc(doc(db, "entryLogs", entryDocument.id), {
+          checkOutAt: Timestamp.now(),
+          status: "Completed",
+        });
 
         setScanResult(member);
-        setScanMessage(
-          `${member.name} checked out successfully.`,
-        );
+        setScanMessage(`${member.name} checked out successfully.`);
         setScanType("checkout");
 
         setTimeout(() => {
@@ -268,9 +249,7 @@ function EntryLog() {
       });
 
       setScanResult(member);
-      setScanMessage(
-        `${member.name} checked in successfully.`,
-      );
+      setScanMessage(`${member.name} checked in successfully.`);
       setScanType("checkin");
 
       setTimeout(() => {
@@ -280,9 +259,7 @@ function EntryLog() {
       console.error("QR scan error:", error);
 
       setScanResult(null);
-      setScanMessage(
-        "Something went wrong while processing the scan.",
-      );
+      setScanMessage("Something went wrong while processing the scan.");
       setScanType("error");
 
       setTimeout(() => {
@@ -292,158 +269,158 @@ function EntryLog() {
   };
 
   /*
- * Start QR Scanner
- */
-useEffect(() => {
-  let isMounted = true;
-  let scanner = null;
-  let scannerStarted = false;
-
-  const startScanner = async () => {
-    try {
-      // Make sure the page is still mounted
-      if (!isMounted) return;
-
-      // Prevent duplicate scanner element initialization
-      const qrReader = document.getElementById("qr-reader");
-
-      if (!qrReader) {
-        console.error("QR reader element not found.");
-        return;
-      }
-
-      // Clear anything left inside the scanner container
-      qrReader.innerHTML = "";
-
-      scanner = new Html5Qrcode("qr-reader");
-      scannerRef.current = scanner;
-
-      console.log("QR scanner created.");
-
-      const cameras = await Html5Qrcode.getCameras();
-
-      if (!isMounted) {
-        return;
-      }
-
-      if (!cameras || cameras.length === 0) {
-        setScanMessage("No camera found.");
-        setScanType("error");
-        return;
-      }
-
-      console.log("Available cameras:", cameras);
-
-      // Try to find the rear/back camera
-      const backCamera =
-        cameras.find((camera) => {
-          const label = camera.label?.toLowerCase() || "";
-
-          return (
-            label.includes("back") ||
-            label.includes("rear") ||
-            label.includes("environment")
-          );
-        }) || cameras[0];
-
-      console.log("Selected camera:", backCamera);
-
-      await scanner.start(
-        backCamera.id,
-        {
-          fps: 10,
-
-          qrbox: {
-            width: 250,
-            height: 250,
-          },
-
-          aspectRatio: 1.7777778,
-
-          videoConstraints: {
-            facingMode: "environment",
-            width: {
-              ideal: 1280,
-            },
-            height: {
-              ideal: 720,
-            },
-          },
-        },
-
-        (decodedText) => {
-          if (!isMounted) return;
-
-          console.log("QR CODE DETECTED:", decodedText);
-
-          handleScan(decodedText);
-        },
-
-        () => {
-          // Ignore normal QR scanning errors
-        },
-      );
-
-      scannerStarted = true;
-
-      console.log("QR scanner started successfully.");
-    } catch (error) {
-      console.error("Scanner start error:", error);
-
-      if (isMounted) {
-        setScanMessage(
-          "Unable to start the camera. Please check your camera permission."
-        );
-        setScanType("error");
-      }
-    }
-  };
-
-  startScanner();
-
-  /*
-   * Cleanup when leaving Entry Log
+   * Start QR Scanner
    */
-  return () => {
-    isMounted = false;
+  useEffect(() => {
+    let isMounted = true;
+    let scanner = null;
+    let scannerStarted = false;
 
-    const currentScanner = scanner;
-
-    scanner = null;
-    scannerRef.current = null;
-
-    if (!currentScanner) {
-      return;
-    }
-
-    const cleanupScanner = async () => {
+    const startScanner = async () => {
       try {
-        if (scannerStarted) {
-          await currentScanner.stop();
-          console.log("QR scanner stopped.");
+        // Make sure the page is still mounted
+        if (!isMounted) return;
+
+        // Prevent duplicate scanner element initialization
+        const qrReader = document.getElementById("qr-reader");
+
+        if (!qrReader) {
+          console.error("QR reader element not found.");
+          return;
         }
-      } catch (error) {
-        console.warn("Scanner stop warning:", error);
-      }
 
-      try {
-        currentScanner.clear();
-        console.log("QR scanner cleared.");
-      } catch (error) {
-        console.warn("Scanner clear warning:", error);
-      }
-
-      // Extra cleanup in case anything remains
-      const qrReader = document.getElementById("qr-reader");
-
-      if (qrReader) {
+        // Clear anything left inside the scanner container
         qrReader.innerHTML = "";
+
+        scanner = new Html5Qrcode("qr-reader");
+        scannerRef.current = scanner;
+
+        console.log("QR scanner created.");
+
+        const cameras = await Html5Qrcode.getCameras();
+
+        if (!isMounted) {
+          return;
+        }
+
+        if (!cameras || cameras.length === 0) {
+          setScanMessage("No camera found.");
+          setScanType("error");
+          return;
+        }
+
+        console.log("Available cameras:", cameras);
+
+        // Try to find the rear/back camera
+        const backCamera =
+          cameras.find((camera) => {
+            const label = camera.label?.toLowerCase() || "";
+
+            return (
+              label.includes("back") ||
+              label.includes("rear") ||
+              label.includes("environment")
+            );
+          }) || cameras[0];
+
+        console.log("Selected camera:", backCamera);
+
+        await scanner.start(
+          backCamera.id,
+          {
+            fps: 10,
+
+            qrbox: {
+              width: 250,
+              height: 250,
+            },
+
+            aspectRatio: 1.7777778,
+
+            videoConstraints: {
+              facingMode: "environment",
+              width: {
+                ideal: 1280,
+              },
+              height: {
+                ideal: 720,
+              },
+            },
+          },
+
+          (decodedText) => {
+            if (!isMounted) return;
+
+            console.log("QR CODE DETECTED:", decodedText);
+
+            handleScan(decodedText);
+          },
+
+          () => {
+            // Ignore normal QR scanning errors
+          },
+        );
+
+        scannerStarted = true;
+
+        console.log("QR scanner started successfully.");
+      } catch (error) {
+        console.error("Scanner start error:", error);
+
+        if (isMounted) {
+          setScanMessage(
+            "Unable to start the camera. Please check your camera permission.",
+          );
+          setScanType("error");
+        }
       }
     };
 
-    cleanupScanner();
-  };
-}, []);
+    startScanner();
+
+    /*
+     * Cleanup when leaving Entry Log
+     */
+    return () => {
+      isMounted = false;
+
+      const currentScanner = scanner;
+
+      scanner = null;
+      scannerRef.current = null;
+
+      if (!currentScanner) {
+        return;
+      }
+
+      const cleanupScanner = async () => {
+        try {
+          if (scannerStarted) {
+            await currentScanner.stop();
+            console.log("QR scanner stopped.");
+          }
+        } catch (error) {
+          console.warn("Scanner stop warning:", error);
+        }
+
+        try {
+          currentScanner.clear();
+          console.log("QR scanner cleared.");
+        } catch (error) {
+          console.warn("Scanner clear warning:", error);
+        }
+
+        // Extra cleanup in case anything remains
+        const qrReader = document.getElementById("qr-reader");
+
+        if (qrReader) {
+          qrReader.innerHTML = "";
+        }
+      };
+
+      cleanupScanner();
+    };
+  }, []);
 
   return (
     <div className="entry-log-page">
@@ -453,8 +430,7 @@ useEffect(() => {
           <h1>Entry Log</h1>
 
           <p>
-            Scan the member's QR code to automatically
-            check them in or out.
+            Scan the member's QR code to automatically check them in or out.
           </p>
         </div>
       </div>
@@ -486,8 +462,7 @@ useEffect(() => {
                   <p>
                     {scanResult.name}
 
-                    {scanResult.membership &&
-                      ` • ${scanResult.membership}`}
+                    {scanResult.membership && ` • ${scanResult.membership}`}
                   </p>
                 )}
               </div>
@@ -503,13 +478,9 @@ useEffect(() => {
         </div>
 
         {loading ? (
-          <p className="loading-text">
-            Loading entries...
-          </p>
+          <p className="loading-text">Loading entries...</p>
         ) : entries.length === 0 ? (
-          <p className="empty-text">
-            No entries recorded yet.
-          </p>
+          <p className="empty-text">No entries recorded yet.</p>
         ) : (
           <div className="table-container">
             <table>
@@ -528,17 +499,11 @@ useEffect(() => {
                   <tr key={entry.id}>
                     <td>{entry.memberName}</td>
 
-                    <td>
-                      {formatDate(entry.checkInAt)}
-                    </td>
+                    <td>{formatDate(entry.checkInAt)}</td>
 
-                    <td>
-                      {formatTime(entry.checkInAt)}
-                    </td>
+                    <td>{formatTime(entry.checkInAt)}</td>
 
-                    <td>
-                      {formatTime(entry.checkOutAt)}
-                    </td>
+                    <td>{formatTime(entry.checkOutAt)}</td>
 
                     <td>
                       <span

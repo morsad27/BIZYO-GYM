@@ -1,63 +1,114 @@
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import {
   collection,
-  addDoc,
   onSnapshot,
-  deleteDoc,
+  addDoc,
   updateDoc,
+  deleteDoc,
   doc,
   serverTimestamp,
 } from "firebase/firestore";
-import { db } from "../firebase";
-import "./Members.css";
 import { QRCodeSVG } from "qrcode.react";
+import { db } from "../firebase";
 import { logActivity } from "../utils/activityLogger";
+import "./Members.css";
 
 function Members() {
-  const [search, setSearch] = useState("");
-  const [showModal, setShowModal] = useState(false);
-
-  const [editingMember, setEditingMember] = useState(null);
-  const [loading, setLoading] = useState(true);
-
   const [members, setMembers] = useState([]);
-  const [membershipPlans, setMembershipPlans] = useState([]);
+  const [membershipPlans, setMembershipPlans] =
+    useState([]);
 
-  // Set default values for the form data
+  const [loading, setLoading] = useState(true);
+  const [plansLoading, setPlansLoading] =
+    useState(true);
+
+  const [search, setSearch] = useState("");
+
+  const [showModal, setShowModal] =
+    useState(false);
+
+  const [showQRModal, setShowQRModal] =
+    useState(false);
+
+  const [editingMember, setEditingMember] =
+    useState(null);
+
+  const [selectedMemberQR, setSelectedMemberQR] =
+    useState(null);
+
   const [formData, setFormData] = useState({
     name: "",
     email: "",
     phone: "",
     membershipId: "",
+    membershipStartDate: "",
     status: "Active",
   });
 
-  // State for selected member's QR code
-  const [selectedMemberQR, setSelectedMemberQR] = useState(null);
+  /*
+   * Load Members
+   */
+  useEffect(() => {
+    const unsubscribe = onSnapshot(
+      collection(db, "members"),
+      (snapshot) => {
+        const membersData =
+          snapshot.docs.map((memberDoc) => ({
+            id: memberDoc.id,
+            ...memberDoc.data(),
+          }));
 
-  const handleShowQR = (member) => {
-    setSelectedMemberQR(member);
-  };
+        membersData.sort((a, b) =>
+          (a.name || "").localeCompare(
+            b.name || "",
+          ),
+        );
+
+        setMembers(membersData);
+        setLoading(false);
+      },
+      (error) => {
+        console.error(
+          "Error loading members:",
+          error,
+        );
+
+        setLoading(false);
+      },
+    );
+
+    return () => unsubscribe();
+  }, []);
 
   /*
-   * Fetch membership plans from Firestore
+   * Load Membership Plans
    */
   useEffect(() => {
     const unsubscribe = onSnapshot(
       collection(db, "memberships"),
       (snapshot) => {
-        const plansData = snapshot.docs.map((document) => ({
-          id: document.id,
-          ...document.data(),
-        }));
+        const plansData =
+          snapshot.docs.map((planDoc) => ({
+            id: planDoc.id,
+            ...planDoc.data(),
+          }));
+
+        plansData.sort((a, b) =>
+          (a.name || "").localeCompare(
+            b.name || "",
+          ),
+        );
 
         setMembershipPlans(plansData);
+        setPlansLoading(false);
       },
       (error) => {
         console.error(
           "Error loading membership plans:",
           error,
         );
+
+        setPlansLoading(false);
       },
     );
 
@@ -65,222 +116,97 @@ function Members() {
   }, []);
 
   /*
-   * Fetch members from Firestore
+   * Calculate membership expiration date
+   *
+   * Duration is treated as number of days.
    */
-  useEffect(() => {
-    const unsubscribe = onSnapshot(
-      collection(db, "members"),
-      (snapshot) => {
-        const membersData = snapshot.docs.map((memberDoc) => ({
-          id: memberDoc.id,
-          ...memberDoc.data(),
-        }));
+  const calculateExpirationDate = (
+    startDate,
+    duration,
+  ) => {
+    if (!startDate || !duration) {
+      return "";
+    }
 
-        setMembers(membersData);
-        setLoading(false);
-      },
-      (error) => {
-        console.error("Error loading members:", error);
-        setLoading(false);
-      },
+    const date = new Date(
+      `${startDate}T00:00:00`,
     );
 
-    return () => unsubscribe();
-  }, []);
+    if (Number.isNaN(date.getTime())) {
+      return "";
+    }
 
-  /*
-   * Delete Member
-   */
-  const handleDeleteMember = async (id) => {
-    const confirmDelete = window.confirm(
-      "Are you sure you want to delete this member?",
+    date.setDate(
+      date.getDate() + Number(duration),
     );
 
-    if (!confirmDelete) return;
+    const year = date.getFullYear();
 
-    try {
-      // Find member before deleting
-      const memberToDelete = members.find(
-        (member) => member.id === id,
-      );
+    const month = String(
+      date.getMonth() + 1,
+    ).padStart(2, "0");
 
-      await deleteDoc(doc(db, "members", id));
+    const day = String(
+      date.getDate(),
+    ).padStart(2, "0");
 
-      // Create activity log
-      await logActivity({
-        action: "Member Deleted",
-        description: `Deleted member ${
-          memberToDelete?.name || "Unknown Member"
-        }`,
-        targetType: "member",
-        targetId: id,
-      });
+    return `${year}-${month}-${day}`;
+  };
 
-      alert("Member deleted successfully!");
-    } catch (error) {
-      console.error("Error deleting member:", error);
-      alert("Failed to delete member.");
+  /*
+   * Format Firestore date/string
+   */
+  const formatDate = (value) => {
+    if (!value) {
+      return "-";
     }
-  };
 
-  /*
-   * Edit Member
-   */
-  const handleEditClick = (member) => {
-    setEditingMember(member);
+    let date;
 
-    setFormData({
-      name: member.name || "",
-      email: member.email || "",
-      phone: member.phone || "",
-      membershipId: member.membershipId || "",
-      status: member.status || "Active",
-    });
-
-    setShowModal(true);
-  };
-
-  /*
-   * Update Member
-   */
-  const handleUpdateMember = async (e) => {
-    e.preventDefault();
-
-    try {
-      const selectedPlan = membershipPlans.find(
-        (plan) => plan.id === formData.membershipId,
+    if (value?.toDate) {
+      date = value.toDate();
+    } else if (
+      typeof value === "string"
+    ) {
+      date = new Date(
+        `${value}T00:00:00`,
       );
-
-      if (!selectedPlan) {
-        alert("Please select a valid membership plan.");
-        return;
-      }
-
-      const memberRef = doc(
-        db,
-        "members",
-        editingMember.id,
-      );
-
-      await updateDoc(memberRef, {
-        name: formData.name,
-        email: formData.email,
-        phone: formData.phone,
-
-        membershipId: selectedPlan.id,
-        membershipName: selectedPlan.name,
-        membershipPrice: Number(selectedPlan.price),
-        membershipDuration: Number(
-          selectedPlan.duration,
-        ),
-
-        status: formData.status,
-      });
-
-      // Create activity log
-      await logActivity({
-        action: "Member Updated",
-        description: `Updated member information for ${formData.name}`,
-        targetType: "member",
-        targetId: editingMember.id,
-      });
-
-      alert("Member updated successfully!");
-
-      setEditingMember(null);
-
-      setFormData({
-        name: "",
-        email: "",
-        phone: "",
-        membershipId: "",
-        status: "Active",
-      });
-
-      setShowModal(false);
-    } catch (error) {
-      console.error("Error updating member:", error);
-      alert("Failed to update member.");
+    } else {
+      return "-";
     }
-  };
 
-  /*
-   * Handle Form Changes
-   */
-  const handleChange = (e) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value,
-    });
-  };
-
-  /*
-   * Add Member
-   */
-  const handleAddMember = async (e) => {
-    e.preventDefault();
-
-    try {
-      // Find the selected membership plan
-      const selectedPlan = membershipPlans.find(
-        (plan) => plan.id === formData.membershipId,
-      );
-
-      if (!selectedPlan) {
-        alert("Please select a valid membership plan.");
-        return;
-      }
-
-      // Create member
-      const newMemberRef = await addDoc(
-        collection(db, "members"),
-        {
-          name: formData.name,
-          email: formData.email,
-          phone: formData.phone,
-
-          // Membership information
-          membershipId: selectedPlan.id,
-          membershipName: selectedPlan.name,
-          membershipPrice: Number(selectedPlan.price),
-          membershipDuration: Number(
-            selectedPlan.duration,
-          ),
-
-          status: formData.status,
-          createdAt: serverTimestamp(),
-        },
-      );
-
-      // Create activity log
-      await logActivity({
-        action: "Member Added",
-        description: `Added ${formData.name} as a new member`,
-        targetType: "member",
-        targetId: newMemberRef.id,
-      });
-
-      alert("Member added successfully!");
-
-      setFormData({
-        name: "",
-        email: "",
-        phone: "",
-        membershipId: "",
-        status: "Active",
-      });
-
-      setShowModal(false);
-    } catch (error) {
-      console.error("Error adding member:", error);
-      alert("Failed to add member.");
+    if (Number.isNaN(date.getTime())) {
+      return "-";
     }
+
+    return date.toLocaleDateString(
+      "en-PH",
+      {
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+      },
+    );
   };
 
   /*
    * Open Add Member Modal
    */
-  const openAddMemberModal = () => {
+  const openAddModal = () => {
+    const today = new Date();
+
+    const year = today.getFullYear();
+
+    const month = String(
+      today.getMonth() + 1,
+    ).padStart(2, "0");
+
+    const day = String(
+      today.getDate(),
+    ).padStart(2, "0");
+
+    const todayString = `${year}-${month}-${day}`;
+
     setEditingMember(null);
 
     setFormData({
@@ -288,6 +214,7 @@ function Members() {
       email: "",
       phone: "",
       membershipId: "",
+      membershipStartDate: todayString,
       status: "Active",
     });
 
@@ -295,185 +222,680 @@ function Members() {
   };
 
   /*
-   * Filter Members
+   * Open Edit Member Modal
    */
-  const filteredMembers = members.filter((member) =>
-    (member.name || "")
-      .toLowerCase()
-      .includes(search.toLowerCase()),
-  );
+  const openEditModal = (member) => {
+    setEditingMember(member);
+
+    setFormData({
+      name: member.name || "",
+      email: member.email || "",
+      phone: member.phone || "",
+      membershipId:
+        member.membershipId || "",
+      membershipStartDate:
+        member.membershipStartDate || "",
+      status: member.status || "Active",
+    });
+
+    setShowModal(true);
+  };
+
+  /*
+   * Close Modal
+   */
+  const closeModal = () => {
+    setShowModal(false);
+    setEditingMember(null);
+
+    setFormData({
+      name: "",
+      email: "",
+      phone: "",
+      membershipId: "",
+      membershipStartDate: "",
+      status: "Active",
+    });
+  };
+
+  /*
+   * Handle Form Changes
+   */
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+
+    /*
+     * Phone number:
+     * Allow numbers only and limit to 11 digits.
+     */
+    if (name === "phone") {
+      const numbersOnly =
+        value.replace(/\D/g, "");
+
+      setFormData((previous) => ({
+        ...previous,
+        phone: numbersOnly.slice(0, 11),
+      }));
+
+      return;
+    }
+
+    setFormData((previous) => ({
+      ...previous,
+      [name]: value,
+    }));
+  };
+
+  /*
+   * Get selected membership plan
+   */
+  const selectedPlan =
+    membershipPlans.find(
+      (plan) =>
+        plan.id === formData.membershipId,
+    );
+
+  /*
+   * Calculate preview expiration date
+   */
+  const previewExpirationDate =
+    selectedPlan &&
+    formData.membershipStartDate
+      ? calculateExpirationDate(
+          formData.membershipStartDate,
+          selectedPlan.duration,
+        )
+      : "";
+
+  /*
+   * Add / Edit Member
+   */
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+
+    /*
+     * Validate phone
+     */
+    if (
+      formData.phone.length !== 11
+    ) {
+      alert(
+        "Phone number must be exactly 11 digits.",
+      );
+
+      return;
+    }
+
+    /*
+     * Validate membership plan
+     */
+    const selectedMembershipPlan =
+      membershipPlans.find(
+        (plan) =>
+          plan.id ===
+          formData.membershipId,
+      );
+
+    if (!selectedMembershipPlan) {
+      alert(
+        "Please select a valid membership plan.",
+      );
+
+      return;
+    }
+
+    /*
+     * Validate start date
+     */
+    if (!formData.membershipStartDate) {
+      alert(
+        "Please select a membership start date.",
+      );
+
+      return;
+    }
+
+    /*
+     * Calculate expiration
+     */
+    const membershipExpirationDate =
+      calculateExpirationDate(
+        formData.membershipStartDate,
+        selectedMembershipPlan.duration,
+      );
+
+    if (!membershipExpirationDate) {
+      alert(
+        "Unable to calculate membership expiration date.",
+      );
+
+      return;
+    }
+
+    try {
+      if (editingMember) {
+        /*
+         * UPDATE MEMBER
+         */
+        await updateDoc(
+          doc(
+            db,
+            "members",
+            editingMember.id,
+          ),
+          {
+            name: formData.name.trim(),
+            email: formData.email.trim(),
+            phone: formData.phone,
+            membershipId:
+              selectedMembershipPlan.id,
+            membershipName:
+              selectedMembershipPlan.name,
+            membershipPrice: Number(
+              selectedMembershipPlan.price,
+            ),
+            membershipDuration: Number(
+              selectedMembershipPlan.duration,
+            ),
+            membershipStartDate:
+              formData.membershipStartDate,
+            membershipExpirationDate,
+            status: formData.status,
+          },
+        );
+
+        await logActivity({
+          action: "Member Updated",
+          description: `Updated member ${formData.name.trim()}`,
+          targetType: "member",
+          targetId: editingMember.id,
+        });
+
+        alert(
+          "Member updated successfully.",
+        );
+      } else {
+        /*
+         * ADD MEMBER
+         */
+        const newMemberRef =
+          await addDoc(
+            collection(db, "members"),
+            {
+              name: formData.name.trim(),
+              email: formData.email.trim(),
+              phone: formData.phone,
+              membershipId:
+                selectedMembershipPlan.id,
+              membershipName:
+                selectedMembershipPlan.name,
+              membershipPrice: Number(
+                selectedMembershipPlan.price,
+              ),
+              membershipDuration: Number(
+                selectedMembershipPlan.duration,
+              ),
+              membershipStartDate:
+                formData.membershipStartDate,
+              membershipExpirationDate,
+              status: formData.status,
+              isRestricted: false,
+              restrictionReason: "",
+              restrictionDate: null,
+              restrictionUntil: null,
+              createdAt:
+                serverTimestamp(),
+            },
+          );
+
+        await logActivity({
+          action: "Member Added",
+          description: `Added member ${formData.name.trim()}`,
+          targetType: "member",
+          targetId: newMemberRef.id,
+        });
+
+        alert(
+          "Member added successfully.",
+        );
+      }
+
+      closeModal();
+    } catch (error) {
+      console.error(
+        "Error saving member:",
+        error,
+      );
+
+      alert(
+        "Failed to save member.",
+      );
+    }
+  };
+
+  /*
+   * Delete Member
+   */
+  const handleDelete = async (
+    member,
+  ) => {
+    const confirmed =
+      window.confirm(
+        `Are you sure you want to delete ${member.name}?`,
+      );
+
+    if (!confirmed) {
+      return;
+    }
+
+    try {
+      await deleteDoc(
+        doc(db, "members", member.id),
+      );
+
+      await logActivity({
+        action: "Member Deleted",
+        description: `Deleted member ${member.name}`,
+        targetType: "member",
+        targetId: member.id,
+      });
+
+      alert(
+        "Member deleted successfully.",
+      );
+    } catch (error) {
+      console.error(
+        "Error deleting member:",
+        error,
+      );
+
+      alert(
+        "Failed to delete member.",
+      );
+    }
+  };
+
+  /*
+   * Open QR Modal
+   */
+  const openQRModal = (member) => {
+    setSelectedMemberQR(member);
+    setShowQRModal(true);
+  };
+
+  /*
+   * Close QR Modal
+   */
+  const closeQRModal = () => {
+    setShowQRModal(false);
+    setSelectedMemberQR(null);
+  };
+
+  /*
+   * Search Members
+   */
+  const filteredMembers =
+    members.filter((member) => {
+      const searchText =
+        search.toLowerCase();
+
+      return (
+        (member.name || "")
+          .toLowerCase()
+          .includes(searchText) ||
+        (member.email || "")
+          .toLowerCase()
+          .includes(searchText) ||
+        (member.phone || "")
+          .toLowerCase()
+          .includes(searchText) ||
+        (
+          member.membershipName ||
+          ""
+        )
+          .toLowerCase()
+          .includes(searchText)
+      );
+    });
+
+  /*
+   * Get membership expiration status
+   */
+  const getExpirationStatus = (
+    member,
+  ) => {
+    if (
+      !member.membershipExpirationDate
+    ) {
+      return "No Date";
+    }
+
+    let expirationDate;
+
+    if (
+      member.membershipExpirationDate?.toDate
+    ) {
+      expirationDate =
+        member.membershipExpirationDate.toDate();
+    } else {
+      expirationDate = new Date(
+        `${member.membershipExpirationDate}T23:59:59`,
+      );
+    }
+
+    if (
+      Number.isNaN(
+        expirationDate.getTime(),
+      )
+    ) {
+      return "No Date";
+    }
+
+    const today = new Date();
+
+    today.setHours(0, 0, 0, 0);
+
+    expirationDate.setHours(
+      0,
+      0,
+      0,
+      0,
+    );
+
+    const difference =
+      expirationDate.getTime() -
+      today.getTime();
+
+    const daysRemaining = Math.ceil(
+      difference /
+        (1000 * 60 * 60 * 24),
+    );
+
+    if (daysRemaining < 0) {
+      return "Expired";
+    }
+
+    if (daysRemaining <= 7) {
+      return "Expiring Soon";
+    }
+
+    return "Active";
+  };
 
   return (
     <div className="members-page">
-      {/* Page Header */}
+      {/* HEADER */}
       <div className="members-header">
         <div>
           <h1>Members</h1>
-          <p>Manage your gym members.</p>
+
+          <p>
+            Manage gym members and their
+            memberships.
+          </p>
         </div>
 
         <button
           className="add-member-btn"
-          onClick={openAddMemberModal}
+          onClick={openAddModal}
         >
           + Add Member
         </button>
       </div>
 
-      {/* Members Card */}
-      <div className="members-card">
-        <div className="members-toolbar">
-          <input
-            type="text"
-            placeholder="Search members..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
-        </div>
-
-        <div className="table-container">
-          <table>
-            <thead>
-              <tr>
-                <th>Member</th>
-                <th>Email</th>
-                <th>Phone</th>
-                <th>Membership</th>
-                <th>Status</th>
-                <th>Actions</th>
-                <th>QR Code</th>
-              </tr>
-            </thead>
-
-            <tbody>
-              {loading ? (
-                <tr>
-                  <td
-                    colSpan="7"
-                    className="loading-message"
-                  >
-                    Loading members...
-                  </td>
-                </tr>
-              ) : filteredMembers.length === 0 ? (
-                <tr>
-                  <td
-                    colSpan="7"
-                    className="empty-message"
-                  >
-                    No members found.
-                  </td>
-                </tr>
-              ) : (
-                filteredMembers.map((member) => (
-                  <tr key={member.id}>
-                    <td>
-                      <div className="member-name">
-                        <div className="table-avatar">
-                          {member.name
-                            ?.charAt(0)
-                            .toUpperCase()}
-                        </div>
-
-                        {member.name}
-                      </div>
-                    </td>
-
-                    <td>{member.email}</td>
-
-                    <td>{member.phone}</td>
-
-                    <td>{member.membershipName}</td>
-
-                    <td>
-                      <span
-                        className={`member-status ${
-                          member.isRestricted
-                            ? "restricted"
-                            : member.status === "Active"
-                              ? "active"
-                              : "inactive"
-                        }`}
-                      >
-                        {member.isRestricted
-                          ? "Restricted"
-                          : member.status}
-                      </span>
-                    </td>
-
-                    <td>
-                      <button
-                        className="edit-btn"
-                        onClick={() =>
-                          handleEditClick(member)
-                        }
-                      >
-                        Edit
-                      </button>
-
-                      <button
-                        className="delete-btn"
-                        onClick={() =>
-                          handleDeleteMember(member.id)
-                        }
-                      >
-                        Delete
-                      </button>
-                    </td>
-
-                    <td>
-                      <button
-                        className="qr-btn"
-                        onClick={() =>
-                          handleShowQR(member)
-                        }
-                      >
-                        View QR
-                      </button>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+      {/* SEARCH */}
+      <div className="members-toolbar">
+        <input
+          type="text"
+          placeholder="Search members..."
+          value={search}
+          onChange={(e) =>
+            setSearch(e.target.value)
+          }
+        />
       </div>
 
-      {/* ADD / EDIT MEMBER MODAL */}
+      {/* TABLE CARD */}
+      <div className="members-card">
+        {loading || plansLoading ? (
+          <p className="members-message">
+            Loading members...
+          </p>
+        ) : filteredMembers.length ===
+          0 ? (
+          <p className="members-message">
+            No members found.
+          </p>
+        ) : (
+          <div className="members-table-container">
+            <table>
+              <thead>
+                <tr>
+                  <th>Member</th>
+                  <th>Contact</th>
+                  <th>Membership</th>
+                  <th>Start Date</th>
+                  <th>Expiration</th>
+                  <th>Status</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+
+              <tbody>
+                {filteredMembers.map(
+                  (member) => {
+                    const expirationStatus =
+                      getExpirationStatus(
+                        member,
+                      );
+
+                    return (
+                      <tr key={member.id}>
+                        {/* MEMBER */}
+                        <td>
+                          <div className="member-name">
+                            <div className="member-avatar">
+                              {member.name
+                                ?.charAt(
+                                  0,
+                                )
+                                .toUpperCase()}
+                            </div>
+
+                            <div>
+                              <strong>
+                                {member.name}
+                              </strong>
+
+                              <span>
+                                ID:{" "}
+                                {member.id.slice(
+                                  0,
+                                  8,
+                                )}
+                              </span>
+                            </div>
+                          </div>
+                        </td>
+
+                        {/* CONTACT */}
+                        <td>
+                          <div className="contact-info">
+                            <span>
+                              {member.email ||
+                                "-"}
+                            </span>
+
+                            <span>
+                              {member.phone ||
+                                "-"}
+                            </span>
+                          </div>
+                        </td>
+
+                        {/* MEMBERSHIP */}
+                        <td>
+                          <div className="membership-info">
+                            <strong>
+                              {member.membershipName ||
+                                "No Membership"}
+                            </strong>
+
+                            {member.membershipPrice !==
+                              undefined && (
+                              <span>
+                                ₱
+                                {Number(
+                                  member.membershipPrice,
+                                ).toLocaleString()}
+                              </span>
+                            )}
+                          </div>
+                        </td>
+
+                        {/* START DATE */}
+                        <td>
+                          {formatDate(
+                            member.membershipStartDate,
+                          )}
+                        </td>
+
+                        {/* EXPIRATION */}
+                        <td>
+                          <div className="expiration-info">
+                            <strong>
+                              {formatDate(
+                                member.membershipExpirationDate,
+                              )}
+                            </strong>
+
+                            {member.membershipExpirationDate && (
+                              <span
+                                className={`expiration-badge ${
+                                  expirationStatus
+                                    .toLowerCase()
+                                    .replace(
+                                      /\s+/g,
+                                      "-",
+                                    )
+                                }`}
+                              >
+                                {
+                                  expirationStatus
+                                }
+                              </span>
+                            )}
+                          </div>
+                        </td>
+
+                        {/* STATUS */}
+                        <td>
+                          <span
+                            className={`member-status ${
+                              member.isRestricted
+                                ? "restricted"
+                                : member.status ===
+                                    "Active"
+                                  ? "active"
+                                  : "inactive"
+                            }`}
+                          >
+                            {member.isRestricted
+                              ? "Restricted"
+                              : member.status}
+                          </span>
+                        </td>
+
+                        {/* ACTIONS */}
+                        <td>
+                          <div className="member-actions">
+                            <button
+                              className="qr-btn"
+                              onClick={() =>
+                                openQRModal(
+                                  member,
+                                )
+                              }
+                            >
+                              QR
+                            </button>
+
+                            <button
+                              className="edit-btn"
+                              onClick={() =>
+                                openEditModal(
+                                  member,
+                                )
+                              }
+                            >
+                              Edit
+                            </button>
+
+                            <button
+                              className="delete-btn"
+                              onClick={() =>
+                                handleDelete(
+                                  member,
+                                )
+                              }
+                            >
+                              Delete
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  },
+                )}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {/* ADD / EDIT MODAL */}
       {showModal && (
         <div
           className="modal-overlay"
-          onClick={() => setShowModal(false)}
+          onClick={closeModal}
         >
           <div
             className="member-modal"
-            onClick={(e) => e.stopPropagation()}
+            onClick={(e) =>
+              e.stopPropagation()
+            }
           >
             <div className="modal-header">
-              <h2>
-                {editingMember
-                  ? "Edit Member"
-                  : "Add New Member"}
-              </h2>
+              <div>
+                <h2>
+                  {editingMember
+                    ? "Edit Member"
+                    : "Add Member"}
+                </h2>
+
+                <p>
+                  {editingMember
+                    ? "Update member information."
+                    : "Add a new gym member."}
+                </p>
+              </div>
 
               <button
                 className="close-btn"
-                onClick={() => setShowModal(false)}
+                onClick={closeModal}
               >
                 ×
               </button>
             </div>
 
             <form
-              onSubmit={
-                editingMember
-                  ? handleUpdateMember
-                  : handleAddMember
-              }
+              onSubmit={handleSubmit}
             >
-              {/* Full Name */}
+              {/* NAME */}
               <div className="form-group">
-                <label>Full Name</label>
+                <label>
+                  Full Name
+                </label>
 
                 <input
                   type="text"
@@ -485,23 +907,27 @@ function Members() {
                 />
               </div>
 
-              {/* Email */}
+              {/* EMAIL */}
               <div className="form-group">
-                <label>Email</label>
+                <label>
+                  Email
+                </label>
 
                 <input
                   type="email"
                   name="email"
                   value={formData.email}
                   onChange={handleChange}
-                  placeholder="Enter email"
+                  placeholder="Enter email address"
                   required
                 />
               </div>
 
-              {/* Phone */}
+              {/* PHONE */}
               <div className="form-group">
-                <label>Phone Number</label>
+                <label>
+                  Phone Number
+                </label>
 
                 <input
                   type="text"
@@ -514,39 +940,101 @@ function Members() {
                   placeholder="Enter 11-digit phone number"
                   required
                 />
+
+                <small>
+                  Enter exactly 11 digits.
+                </small>
               </div>
 
-              {/* Membership */}
+              {/* MEMBERSHIP */}
               <div className="form-group">
-                <label>Membership Plan</label>
+                <label>
+                  Membership Plan
+                </label>
 
                 <select
                   name="membershipId"
-                  value={formData.membershipId}
+                  value={
+                    formData.membershipId
+                  }
                   onChange={handleChange}
                   required
                 >
                   <option value="">
-                    Select a membership plan
+                    Select membership plan
                   </option>
 
-                  {membershipPlans.map((plan) => (
-                    <option
-                      key={plan.id}
-                      value={plan.id}
-                    >
-                      {plan.name} - ₱
-                      {Number(
-                        plan.price,
-                      ).toLocaleString()}
-                    </option>
-                  ))}
+                  {membershipPlans.map(
+                    (plan) => (
+                      <option
+                        key={plan.id}
+                        value={plan.id}
+                      >
+                        {plan.name} — ₱
+                        {Number(
+                          plan.price || 0,
+                        ).toLocaleString()}{" "}
+                        /{" "}
+                        {plan.duration} days
+                      </option>
+                    ),
+                  )}
                 </select>
               </div>
 
-              {/* Status */}
+              {/* START DATE */}
               <div className="form-group">
-                <label>Status</label>
+                <label>
+                  Membership Start Date
+                </label>
+
+                <input
+                  type="date"
+                  name="membershipStartDate"
+                  value={
+                    formData.membershipStartDate
+                  }
+                  onChange={handleChange}
+                  required
+                />
+              </div>
+
+              {/* EXPIRATION PREVIEW */}
+              {selectedPlan &&
+                formData.membershipStartDate && (
+                  <div className="expiration-preview">
+                    <div>
+                      <span>
+                        Membership Duration
+                      </span>
+
+                      <strong>
+                        {
+                          selectedPlan.duration
+                        }{" "}
+                        days
+                      </strong>
+                    </div>
+
+                    <div>
+                      <span>
+                        Expiration Date
+                      </span>
+
+                      <strong>
+                        {formatDate(
+                          previewExpirationDate,
+                        )}
+                      </strong>
+                    </div>
+                  </div>
+                )}
+
+              {/* STATUS */}
+              <div className="form-group">
+                <label>
+                  Status
+                </label>
 
                 <select
                   name="status"
@@ -563,14 +1051,12 @@ function Members() {
                 </select>
               </div>
 
-              {/* Modal Actions */}
+              {/* ACTIONS */}
               <div className="modal-actions">
                 <button
                   type="button"
                   className="cancel-btn"
-                  onClick={() =>
-                    setShowModal(false)
-                  }
+                  onClick={closeModal}
                 >
                   Cancel
                 </button>
@@ -589,44 +1075,72 @@ function Members() {
         </div>
       )}
 
-      {/* QR CODE MODAL */}
-      {selectedMemberQR && (
-        <div className="modal-overlay">
-          <div className="qr-modal">
-            <div className="modal-header">
-              <h2>Member QR Code</h2>
+      {/* QR MODAL */}
+      {showQRModal &&
+        selectedMemberQR && (
+          <div
+            className="modal-overlay"
+            onClick={closeQRModal}
+          >
+            <div
+              className="qr-modal"
+              onClick={(e) =>
+                e.stopPropagation()
+              }
+            >
+              <div className="modal-header">
+                <div>
+                  <h2>
+                    Member QR Code
+                  </h2>
 
-              <button
-                className="close-btn"
-                onClick={() =>
-                  setSelectedMemberQR(null)
-                }
-              >
-                ×
-              </button>
-            </div>
+                  <p>
+                    Use this QR code for
+                    gym entry.
+                  </p>
+                </div>
 
-            <div className="qr-content">
-              <h3>{selectedMemberQR.name}</h3>
-
-              <p>
-                Scan this QR code for gym entry.
-              </p>
-
-              <div className="qr-code-container">
-                <QRCodeSVG
-                  value={selectedMemberQR.id}
-                  size={220}
-                />
+                <button
+                  className="close-btn"
+                  onClick={closeQRModal}
+                >
+                  ×
+                </button>
               </div>
 
-              <small>
-                Member ID: {selectedMemberQR.id}
-              </small>
+              <div className="qr-content">
+                <div className="qr-code-wrapper">
+                  <QRCodeSVG
+                    value={
+                      selectedMemberQR.id
+                    }
+                    size={220}
+                    level="H"
+                  />
+                </div>
+
+                <h3>
+                  {
+                    selectedMemberQR.name
+                  }
+                </h3>
+
+                <p>
+                  {
+                    selectedMemberQR.email
+                  }
+                </p>
+
+                <span className="qr-member-id">
+                  Member ID:{" "}
+                  {
+                    selectedMemberQR.id
+                  }
+                </span>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
     </div>
   );
 }

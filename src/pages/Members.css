@@ -408,3 +408,77 @@ tbody tr:hover {
   background: rgba(255, 60, 60, 0.15);
   color: #ff5c5c;
 }
+
+.expiration-info {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.expiration-info strong {
+  color: #fff;
+  font-size: 13px;
+}
+
+.expiration-badge {
+  width: fit-content;
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 10px;
+  font-weight: 600;
+}
+
+.expiration-badge.active {
+  background: rgba(0, 194, 111, 0.12);
+  color: #00c26f;
+}
+
+.expiration-badge.expiring-soon {
+  background: rgba(255, 140, 0, 0.12);
+  color: #ff8c00;
+}
+
+.expiration-badge.expired {
+  background: rgba(255, 92, 92, 0.12);
+  color: #ff5c5c;
+}
+
+.expiration-badge.no-date {
+  background: rgba(153, 153, 153, 0.12);
+  color: #999;
+}
+
+/* EXPIRATION PREVIEW */
+
+.expiration-preview {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 18px;
+  padding: 14px;
+  background: #161622;
+  border: 1px solid #303044;
+  border-radius: 8px;
+}
+
+.expiration-preview div {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.expiration-preview span {
+  color: #777;
+  font-size: 11px;
+}
+
+.expiration-preview strong {
+  color: #ff8c00;
+  font-size: 13px;
+}
+
+@media (max-width: 600px) {
+  .expiration-preview {
+    grid-template-columns: 1fr;
+  }
+}

@@ -10,6 +10,7 @@ import Equipment from "./pages/Equipment";
 import Incidents from "./pages/Incidents";
 import RestrictedMembers from "./pages/RestrictedMembers";
 import ActivityLogs from "./pages/ActivityLogs";
+import MembershipExpiration from "./pages/MembershipExpiration";
 
 function App() {
   return (
@@ -27,6 +28,7 @@ function App() {
           <Route path="/incidents" element={<Incidents />} />
           <Route path="/restricted-members" element={<RestrictedMembers />} />
           <Route path="/activity-logs" element={<ActivityLogs />} />
+          <Route path="/membership-expiration" element={<MembershipExpiration />} />
         </Route>
       </Routes>
     </BrowserRouter>

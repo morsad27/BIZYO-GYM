@@ -58,6 +58,9 @@ function Sidebar() {
         <NavLink to="/activity-logs">
           📋 <span>Activity Logs</span>
         </NavLink>
+        <NavLink to="/membership-expiration">
+          ⏰ <span>Plan Expiration</span>
+        </NavLink>
 {/* 
         <NavLink to="/settings">
           ⚙️ <span>Settings</span>

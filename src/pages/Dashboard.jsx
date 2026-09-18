@@ -162,7 +162,7 @@ function Dashboard() {
 
             <h2>{loading ? "..." : totalMembers}</h2>
 
-            <span className="positive">Registered members</span>
+            {/* <span className="positive">Registered members</span> */}
           </div>
         </div>
 
@@ -174,7 +174,7 @@ function Dashboard() {
 
             <h2>{loading ? "..." : activeMembers}</h2>
 
-            <span className="positive">Currently active</span>
+            {/* <span className="positive">Currently active</span> */}
           </div>
         </div>
 
@@ -186,7 +186,7 @@ function Dashboard() {
 
             <h2>{entriesLoading ? "..." : todaysEntries}</h2>
 
-            <span className="positive">Entries today</span>
+            {/* <span className="positive">Entries today</span> */}
           </div>
         </div>
 
@@ -198,7 +198,7 @@ function Dashboard() {
 
             <h2>{entriesLoading ? "..." : currentlyInside}</h2>
 
-            <span className="positive">Members inside</span>
+            {/* <span className="positive">Members inside</span> */}
           </div>
         </div>
       </section>

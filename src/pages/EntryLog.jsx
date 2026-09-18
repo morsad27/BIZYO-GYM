@@ -292,107 +292,158 @@ function EntryLog() {
   };
 
   /*
-   * Start QR Scanner
-   */
-  useEffect(() => {
-    let isMounted = true;
+ * Start QR Scanner
+ */
+useEffect(() => {
+  let isMounted = true;
+  let scanner = null;
+  let scannerStarted = false;
 
-    const startScanner = async () => {
+  const startScanner = async () => {
+    try {
+      // Make sure the page is still mounted
       if (!isMounted) return;
 
-      if (scannerRef.current) {
+      // Prevent duplicate scanner element initialization
+      const qrReader = document.getElementById("qr-reader");
+
+      if (!qrReader) {
+        console.error("QR reader element not found.");
         return;
       }
 
-      const scanner = new Html5Qrcode("qr-reader");
+      // Clear anything left inside the scanner container
+      qrReader.innerHTML = "";
 
+      scanner = new Html5Qrcode("qr-reader");
       scannerRef.current = scanner;
 
-      try {
-        const cameras = await Html5Qrcode.getCameras();
+      console.log("QR scanner created.");
 
-        if (!isMounted) return;
+      const cameras = await Html5Qrcode.getCameras();
 
-        if (!cameras || cameras.length === 0) {
-          setScanMessage("No camera found.");
-          setScanType("error");
-          return;
-        }
-
-        const backCamera =
-          cameras.find((camera) => {
-            const label = camera.label.toLowerCase();
-
-            return (
-              label.includes("back") ||
-              label.includes("rear")
-            );
-          }) || cameras[0];
-
-        await scanner.start(
-          backCamera.id,
-          {
-            fps: 10,
-            qrbox: {
-              width: 250,
-              height: 250,
-            },
-            aspectRatio: 1,
-          },
-          (decodedText) => {
-            if (!isMounted) return;
-
-            handleScan(decodedText);
-          },
-          () => {
-            // Ignore normal scanning errors
-          },
-        );
-      } catch (error) {
-        console.error("Scanner start error:", error);
-
-        if (isMounted) {
-          setScanMessage(
-            "Unable to start the camera. Please check your camera permission.",
-          );
-          setScanType("error");
-        }
-      }
-    };
-
-    startScanner();
-
-    /*
-     * Cleanup scanner when leaving page
-     */
-    return () => {
-      isMounted = false;
-
-      const scanner = scannerRef.current;
-
-      if (!scanner) {
+      if (!isMounted) {
         return;
       }
 
-      scannerRef.current = null;
+      if (!cameras || cameras.length === 0) {
+        setScanMessage("No camera found.");
+        setScanType("error");
+        return;
+      }
 
-      const stopScanner = async () => {
-        try {
-          await scanner.stop();
-        } catch (error) {
-          console.error("Scanner stop error:", error);
+      console.log("Available cameras:", cameras);
+
+      // Try to find the rear/back camera
+      const backCamera =
+        cameras.find((camera) => {
+          const label = camera.label?.toLowerCase() || "";
+
+          return (
+            label.includes("back") ||
+            label.includes("rear") ||
+            label.includes("environment")
+          );
+        }) || cameras[0];
+
+      console.log("Selected camera:", backCamera);
+
+      await scanner.start(
+        backCamera.id,
+        {
+          fps: 10,
+
+          qrbox: {
+            width: 250,
+            height: 250,
+          },
+
+          aspectRatio: 1.7777778,
+
+          videoConstraints: {
+            facingMode: "environment",
+            width: {
+              ideal: 1280,
+            },
+            height: {
+              ideal: 720,
+            },
+          },
+        },
+
+        (decodedText) => {
+          if (!isMounted) return;
+
+          console.log("QR CODE DETECTED:", decodedText);
+
+          handleScan(decodedText);
+        },
+
+        () => {
+          // Ignore normal QR scanning errors
+        },
+      );
+
+      scannerStarted = true;
+
+      console.log("QR scanner started successfully.");
+    } catch (error) {
+      console.error("Scanner start error:", error);
+
+      if (isMounted) {
+        setScanMessage(
+          "Unable to start the camera. Please check your camera permission."
+        );
+        setScanType("error");
+      }
+    }
+  };
+
+  startScanner();
+
+  /*
+   * Cleanup when leaving Entry Log
+   */
+  return () => {
+    isMounted = false;
+
+    const currentScanner = scanner;
+
+    scanner = null;
+    scannerRef.current = null;
+
+    if (!currentScanner) {
+      return;
+    }
+
+    const cleanupScanner = async () => {
+      try {
+        if (scannerStarted) {
+          await currentScanner.stop();
+          console.log("QR scanner stopped.");
         }
+      } catch (error) {
+        console.warn("Scanner stop warning:", error);
+      }
 
-        try {
-          scanner.clear();
-        } catch (error) {
-          console.error("Scanner clear error:", error);
-        }
-      };
+      try {
+        currentScanner.clear();
+        console.log("QR scanner cleared.");
+      } catch (error) {
+        console.warn("Scanner clear warning:", error);
+      }
 
-      stopScanner();
+      // Extra cleanup in case anything remains
+      const qrReader = document.getElementById("qr-reader");
+
+      if (qrReader) {
+        qrReader.innerHTML = "";
+      }
     };
-  }, []);
+
+    cleanupScanner();
+  };
+}, []);
 
   return (
     <div className="entry-log-page">

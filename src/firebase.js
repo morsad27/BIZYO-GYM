@@ -3,12 +3,12 @@ import { getAuth } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 
 const firebaseConfig = {
-  apiKey: "AIzaSyCMZMepKka1qonx_QDYCN5mWIiIoSfM0-E",
-    authDomain: "bizyo-gym-management.firebaseapp.com",
-    projectId: "bizyo-gym-management",
-    storageBucket: "bizyo-gym-management.firebasestorage.app",
-    messagingSenderId: "640136574067",
-    appId: "1:640136574067:web:8c72b7ddc64ea1697c2606"
+  apiKey: "AIzaSyDPNwCWwy6a4tL3HNKkT7A4ScIbZTljdFc",
+  authDomain: "bizyo-management.firebaseapp.com",
+  projectId: "bizyo-management",
+  storageBucket: "bizyo-management.firebasestorage.app",
+  messagingSenderId: "705212536309",
+  appId: "1:705212536309:web:6d091c0eea909212b63cbc"
 };
 
 const app = initializeApp(firebaseConfig);

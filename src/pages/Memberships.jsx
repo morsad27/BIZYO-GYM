@@ -194,7 +194,7 @@ function Memberships() {
               </div>
 
               <p className="plan-duration">
-                {plan.duration} month
+                {plan.duration} day(s)
                 {Number(plan.duration) > 1 ? "s" : ""}
               </p>
 
@@ -285,7 +285,7 @@ function Memberships() {
               </div>
 
               <div className="form-group">
-                <label>Duration (Months)</label>
+                <label>Duration (Days)</label>
 
                 <input
                   type="number"

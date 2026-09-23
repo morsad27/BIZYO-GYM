@@ -155,6 +155,72 @@ function Payments() {
   };
 
   /*
+   * Calculate membership expiration date from the
+   * date the member becomes fully paid.
+   */
+  const calculateExpirationDate = (startDate, duration) => {
+    if (!startDate || !duration) return null;
+
+    const date = new Date(`${startDate}T00:00:00`);
+
+    if (Number.isNaN(date.getTime())) return null;
+
+    date.setDate(date.getDate() + Number(duration));
+
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+
+    return `${year}-${month}-${day}`;
+  };
+
+  /*
+   * Start or reset a member's membership based on
+   * their current total payment.
+   *
+   * Membership starts only when the member is fully paid.
+   */
+  const syncMemberMembership = async (member, totalPaid, paymentDate) => {
+    if (!member) return;
+
+    const membershipPrice = getMembershipPrice(member);
+    const isFullyPaid =
+      membershipPrice > 0 && totalPaid >= membershipPrice;
+
+    const memberRef = doc(db, "members", member.id);
+
+    if (isFullyPaid) {
+      // Keep an existing membership start date if the member
+      // was already activated. Otherwise, start it using the
+      // payment date that completed the membership payment.
+      const startDate =
+        member.membershipStartDate ||
+        paymentDate ||
+        new Date().toISOString().split("T")[0];
+
+      const expirationDate = calculateExpirationDate(
+        startDate,
+        member.membershipDuration,
+      );
+
+      await updateDoc(memberRef, {
+        membershipStartDate: startDate,
+        membershipExpirationDate: expirationDate,
+        status: "Active",
+      });
+
+      return;
+    }
+
+    // If the member is no longer fully paid, the membership
+    // should not be considered started.
+    await updateDoc(memberRef, {
+      membershipStartDate: null,
+      membershipExpirationDate: null,
+    });
+  };
+
+  /*
    * Get payment status
    */
   const getPaymentStatus = (memberId) => {
@@ -325,6 +391,12 @@ function Payments() {
           selectedMember,
         );
 
+      await syncMemberMembership(
+        selectedMember,
+        newTotalPaid,
+        formData.paymentDate,
+      );
+
       let paymentStatus = "No Payment";
 
       if (
@@ -411,6 +483,12 @@ function Payments() {
           selectedMember,
         );
 
+      await syncMemberMembership(
+        selectedMember,
+        newTotalPaid,
+        formData.paymentDate,
+      );
+
       let paymentStatus = "No Payment";
 
       if (
@@ -483,6 +561,23 @@ function Payments() {
       await deleteDoc(
         doc(db, "payments", payment.id),
       );
+
+      const selectedMember = members.find(
+        (member) => member.id === payment.memberId,
+      );
+
+      if (selectedMember) {
+        const remainingTotalPaid = getMemberTotalPaid(
+          selectedMember.id,
+          payment.id,
+        );
+
+        await syncMemberMembership(
+          selectedMember,
+          remainingTotalPaid,
+          null,
+        );
+      }
 
       await logActivity({
         action: "Payment Deleted",

@@ -92,6 +92,28 @@ function Members() {
     });
   };
 
+  const getMemberStatus = (member) => {
+    // Restricted takes priority
+    if (member.isRestricted) {
+      return "Restricted";
+    }
+
+    // Check membership expiration
+    if (member.membershipExpirationDate) {
+      const expirationDate = new Date(
+        `${member.membershipExpirationDate}T23:59:59`,
+      );
+
+      const today = new Date();
+
+      if (today > expirationDate) {
+        return "Expired";
+      }
+    }
+
+    return member.status || "Inactive";
+  };
+
   // =========================================================
   // QR CODE
   // =========================================================
@@ -162,9 +184,7 @@ function Members() {
     }
 
     try {
-      const memberToDelete = members.find(
-        (member) => member.id === id,
-      );
+      const memberToDelete = members.find((member) => member.id === id);
 
       await deleteDoc(doc(db, "members", id));
 
@@ -193,8 +213,7 @@ function Members() {
 
     // If the old member does not have a start date,
     // use today's date in the edit form.
-    const startDate =
-      member.membershipStartDate || getTodayDate();
+    const startDate = member.membershipStartDate || getTodayDate();
 
     setFormData({
       name: member.name || "",
@@ -240,11 +259,7 @@ function Members() {
         return;
       }
 
-      const memberRef = doc(
-        db,
-        "members",
-        editingMember.id,
-      );
+      const memberRef = doc(db, "members", editingMember.id);
 
       await updateDoc(memberRef, {
         name: formData.name,
@@ -337,27 +352,24 @@ function Members() {
         return;
       }
 
-      const newMemberRef = await addDoc(
-        collection(db, "members"),
-        {
-          name: formData.name,
-          email: formData.email,
-          phone: formData.phone,
+      const newMemberRef = await addDoc(collection(db, "members"), {
+        name: formData.name,
+        email: formData.email,
+        phone: formData.phone,
 
-          // Existing membership information
-          membershipId: selectedPlan.id,
-          membershipName: selectedPlan.name,
-          membershipPrice: Number(selectedPlan.price),
-          membershipDuration: Number(selectedPlan.duration),
+        // Existing membership information
+        membershipId: selectedPlan.id,
+        membershipName: selectedPlan.name,
+        membershipPrice: Number(selectedPlan.price),
+        membershipDuration: Number(selectedPlan.duration),
 
-          // New membership date information
-          membershipStartDate: formData.membershipStartDate,
-          membershipExpirationDate: expirationDate,
+        // New membership date information
+        membershipStartDate: formData.membershipStartDate,
+        membershipExpirationDate: expirationDate,
 
-          status: formData.status,
-          createdAt: serverTimestamp(),
-        },
-      );
+        status: formData.status,
+        createdAt: serverTimestamp(),
+      });
 
       await logActivity({
         action: "Member Added",
@@ -408,9 +420,7 @@ function Members() {
   // =========================================================
 
   const filteredMembers = members.filter((member) =>
-    (member.name || "")
-      .toLowerCase()
-      .includes(search.toLowerCase()),
+    (member.name || "").toLowerCase().includes(search.toLowerCase()),
   );
 
   // =========================================================
@@ -425,10 +435,7 @@ function Members() {
           <p>Manage your gym members.</p>
         </div>
 
-        <button
-          className="add-member-btn"
-          onClick={openAddMemberModal}
-        >
+        <button className="add-member-btn" onClick={openAddMemberModal}>
           + Add Member
         </button>
       </div>
@@ -461,19 +468,13 @@ function Members() {
             <tbody>
               {loading ? (
                 <tr>
-                  <td
-                    colSpan="8"
-                    className="loading-message"
-                  >
+                  <td colSpan="8" className="loading-message">
                     Loading members...
                   </td>
                 </tr>
               ) : filteredMembers.length === 0 ? (
                 <tr>
-                  <td
-                    colSpan="8"
-                    className="empty-message"
-                  >
+                  <td colSpan="8" className="empty-message">
                     No members found.
                   </td>
                 </tr>
@@ -496,43 +497,41 @@ function Members() {
 
                     <td>{member.membershipName}</td>
 
-                    <td>
-                      {formatDate(
-                        member.membershipExpirationDate,
-                      )}
-                    </td>
+                    <td>{formatDate(member.membershipExpirationDate)}</td>
 
                     <td>
-                      <span
-                        className={`member-status ${
-                          member.isRestricted
-                            ? "restricted"
-                            : member.status === "Active"
-                              ? "active"
-                              : "inactive"
-                        }`}
-                      >
-                        {member.isRestricted
-                          ? "Restricted"
-                          : member.status}
-                      </span>
+                      {(() => {
+                        const currentStatus = getMemberStatus(member);
+
+                        return (
+                          <span
+                            className={`member-status ${
+                              currentStatus === "Restricted"
+                                ? "restricted"
+                                : currentStatus === "Expired"
+                                  ? "expired"
+                                  : currentStatus === "Active"
+                                    ? "active"
+                                    : "inactive"
+                            }`}
+                          >
+                            {currentStatus}
+                          </span>
+                        );
+                      })()}
                     </td>
 
                     <td>
                       <button
                         className="edit-btn"
-                        onClick={() =>
-                          handleEditClick(member)
-                        }
+                        onClick={() => handleEditClick(member)}
                       >
                         Edit
                       </button>
 
                       <button
                         className="delete-btn"
-                        onClick={() =>
-                          handleDeleteMember(member.id)
-                        }
+                        onClick={() => handleDeleteMember(member.id)}
                       >
                         Delete
                       </button>
@@ -541,9 +540,7 @@ function Members() {
                     <td>
                       <button
                         className="qr-btn"
-                        onClick={() =>
-                          handleShowQR(member)
-                        }
+                        onClick={() => handleShowQR(member)}
                       >
                         View QR
                       </button>
@@ -561,35 +558,18 @@ function Members() {
           ===================================================== */}
 
       {showModal && (
-        <div
-          className="modal-overlay"
-          onClick={() => setShowModal(false)}
-        >
-          <div
-            className="member-modal"
-            onClick={(e) => e.stopPropagation()}
-          >
+        <div className="modal-overlay" onClick={() => setShowModal(false)}>
+          <div className="member-modal" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
-              <h2>
-                {editingMember
-                  ? "Edit Member"
-                  : "Add New Member"}
-              </h2>
+              <h2>{editingMember ? "Edit Member" : "Add New Member"}</h2>
 
-              <button
-                className="close-btn"
-                onClick={() => setShowModal(false)}
-              >
+              <button className="close-btn" onClick={() => setShowModal(false)}>
                 ×
               </button>
             </div>
 
             <form
-              onSubmit={
-                editingMember
-                  ? handleUpdateMember
-                  : handleAddMember
-              }
+              onSubmit={editingMember ? handleUpdateMember : handleAddMember}
             >
               {/* FULL NAME */}
               <div className="form-group">
@@ -646,19 +626,11 @@ function Members() {
                   onChange={handleChange}
                   required
                 >
-                  <option value="">
-                    Select a membership plan
-                  </option>
+                  <option value="">Select a membership plan</option>
 
                   {membershipPlans.map((plan) => (
-                    <option
-                      key={plan.id}
-                      value={plan.id}
-                    >
-                      {plan.name} - ₱
-                      {Number(
-                        plan.price,
-                      ).toLocaleString()}
+                    <option key={plan.id} value={plan.id}>
+                      {plan.name} - ₱{Number(plan.price).toLocaleString()}
                     </option>
                   ))}
                 </select>
@@ -681,22 +653,18 @@ function Members() {
               {formData.membershipId &&
                 formData.membershipStartDate &&
                 (() => {
-                  const selectedPlan =
-                    membershipPlans.find(
-                      (plan) =>
-                        plan.id ===
-                        formData.membershipId,
-                    );
+                  const selectedPlan = membershipPlans.find(
+                    (plan) => plan.id === formData.membershipId,
+                  );
 
                   if (!selectedPlan) {
                     return null;
                   }
 
-                  const expirationDate =
-                    calculateExpirationDate(
-                      formData.membershipStartDate,
-                      selectedPlan.duration,
-                    );
+                  const expirationDate = calculateExpirationDate(
+                    formData.membershipStartDate,
+                    selectedPlan.duration,
+                  );
 
                   return (
                     <div
@@ -708,9 +676,7 @@ function Members() {
                         borderRadius: "8px",
                       }}
                     >
-                      <label>
-                        Membership Expiration
-                      </label>
+                      <label>Membership Expiration</label>
 
                       <div
                         style={{
@@ -729,8 +695,7 @@ function Members() {
                           color: "#666",
                         }}
                       >
-                        {selectedPlan.duration}{" "}
-                        day(s) membership
+                        {selectedPlan.duration} day(s) membership
                       </small>
                     </div>
                   );
@@ -745,13 +710,9 @@ function Members() {
                   value={formData.status}
                   onChange={handleChange}
                 >
-                  <option value="Active">
-                    Active
-                  </option>
+                  <option value="Active">Active</option>
 
-                  <option value="Inactive">
-                    Inactive
-                  </option>
+                  <option value="Inactive">Inactive</option>
                 </select>
               </div>
 
@@ -760,20 +721,13 @@ function Members() {
                 <button
                   type="button"
                   className="cancel-btn"
-                  onClick={() =>
-                    setShowModal(false)
-                  }
+                  onClick={() => setShowModal(false)}
                 >
                   Cancel
                 </button>
 
-                <button
-                  type="submit"
-                  className="save-btn"
-                >
-                  {editingMember
-                    ? "Update Member"
-                    : "Add Member"}
+                <button type="submit" className="save-btn">
+                  {editingMember ? "Update Member" : "Add Member"}
                 </button>
               </div>
             </form>
@@ -798,9 +752,7 @@ function Members() {
 
               <button
                 className="close-btn"
-                onClick={() =>
-                  setSelectedMemberQR(null)
-                }
+                onClick={() => setSelectedMemberQR(null)}
               >
                 ×
               </button>
@@ -809,20 +761,13 @@ function Members() {
             <div className="qr-content">
               <h3>{selectedMemberQR.name}</h3>
 
-              <p>
-                Scan this QR code for gym entry.
-              </p>
+              <p>Scan this QR code for gym entry.</p>
 
               <div className="qr-code-container">
-                <QRCodeSVG
-                  value={selectedMemberQR.id}
-                  size={220}
-                />
+                <QRCodeSVG value={selectedMemberQR.id} size={220} />
               </div>
 
-              <small>
-                Member ID: {selectedMemberQR.id}
-              </small>
+              <small>Member ID: {selectedMemberQR.id}</small>
             </div>
           </div>
         </div>

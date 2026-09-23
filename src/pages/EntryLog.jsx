@@ -186,13 +186,15 @@ function EntryLog() {
         return;
       }
 
-      /*
+           /*
        * Check member status
        */
       if (member.status !== "Active") {
         setScanResult(member);
 
-        setScanMessage(`Entry denied. ${member.name} is not an active member.`);
+        setScanMessage(
+          `Entry denied. ${member.name} is not an active member.`,
+        );
 
         setScanType("error");
 
@@ -202,6 +204,100 @@ function EntryLog() {
 
         return;
       }
+
+      /*
+       * Check membership expiration
+       */
+      if (member.membershipExpirationDate) {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        const expirationDate = new Date(
+          `${member.membershipExpirationDate}T00:00:00`,
+        );
+
+        if (today > expirationDate) {
+          setScanResult(member);
+
+          setScanMessage(
+            `Entry denied. ${member.name}'s membership expired on ${expirationDate.toLocaleDateString(
+              "en-PH",
+              {
+                year: "numeric",
+                month: "short",
+                day: "numeric",
+              },
+            )}.`,
+          );
+
+          setScanType("error");
+
+          setTimeout(() => {
+            scanLock.current = false;
+          }, 3000);
+
+          return;
+        }
+      }
+
+      /*
+       * Check membership payment
+       */
+      const paymentsQuery = query(
+        collection(db, "payments"),
+        where("memberId", "==", member.id),
+      );
+
+      const paymentsSnapshot = await getDocs(paymentsQuery);
+
+      const totalPaid = paymentsSnapshot.docs.reduce(
+        (total, paymentDoc) => {
+          const payment = paymentDoc.data();
+
+          return total + Number(payment.amount || 0);
+        },
+        0,
+      );
+
+      const membershipPrice = Number(member.membershipPrice || 0);
+
+      /*
+       * Membership must be fully paid
+       */
+      if (membershipPrice <= 0 || totalPaid < membershipPrice) {
+        const remainingBalance = Math.max(
+          membershipPrice - totalPaid,
+          0,
+        );
+
+        setScanResult(member);
+
+        setScanMessage(
+          `Entry denied. ${member.name} has not fully paid the membership.${
+            remainingBalance > 0
+              ? ` Remaining balance: ₱${remainingBalance.toLocaleString(
+                  "en-PH",
+                  {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                  },
+                )}.`
+              : " Please settle the membership payment first."
+          }`,
+        );
+
+        setScanType("error");
+
+        setTimeout(() => {
+          scanLock.current = false;
+        }, 3000);
+
+        return;
+      }
+
+      /*
+       * Check if member is already inside
+       */
 
       /*
        * Check if member is already inside

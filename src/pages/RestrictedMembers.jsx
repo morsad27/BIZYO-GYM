@@ -395,7 +395,7 @@ function RestrictedMembers() {
                           className="remove-restriction-btn"
                           onClick={() => handleRemoveRestriction(member)}
                         >
-                          Remove
+                          Unrestrict
                         </button>
                       </td>
                     </tr>

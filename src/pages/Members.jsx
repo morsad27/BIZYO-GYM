@@ -36,6 +36,14 @@ function Members() {
   // State for selected member's QR code
   const [selectedMemberQR, setSelectedMemberQR] = useState(null);
 
+  // Renewal state
+  const [showRenewalModal, setShowRenewalModal] = useState(false);
+  const [renewalMember, setRenewalMember] = useState(null);
+  const [renewalAmount, setRenewalAmount] = useState("");
+  const [renewalDate, setRenewalDate] = useState("");
+  const [renewalMethod, setRenewalMethod] = useState("Cash");
+  const [renewalNotes, setRenewalNotes] = useState("");
+
   // =========================================================
   // DATE HELPERS
   // =========================================================
@@ -90,6 +98,21 @@ function Members() {
       month: "short",
       day: "numeric",
     });
+  };
+
+  const getMemberStatus = (member) => {
+    if (member.isRestricted) return "Restricted";
+
+    if (member.membershipExpirationDate) {
+      const expirationDate = new Date(
+        `${member.membershipExpirationDate}T23:59:59`,
+      );
+      if (!Number.isNaN(expirationDate.getTime()) && new Date() > expirationDate) {
+        return "Expired";
+      }
+    }
+
+    return member.status || "Inactive";
   };
 
   // =========================================================
@@ -374,6 +397,116 @@ function Members() {
   };
 
   // =========================================================
+  // RENEW MEMBERSHIP
+  // =========================================================
+
+  const openRenewalModal = (member) => {
+    if (getMemberStatus(member) !== "Expired") {
+      alert("This membership is not expired yet.");
+      return;
+    }
+
+    setRenewalMember(member);
+    setRenewalAmount("");
+    setRenewalDate(getTodayDate());
+    setRenewalMethod("Cash");
+    setRenewalNotes("");
+    setShowRenewalModal(true);
+  };
+
+  const closeRenewalModal = () => {
+    setShowRenewalModal(false);
+    setRenewalMember(null);
+    setRenewalAmount("");
+    setRenewalDate(getTodayDate());
+    setRenewalMethod("Cash");
+    setRenewalNotes("");
+  };
+
+  const handleRenewMembership = async (e) => {
+    e.preventDefault();
+
+    if (!renewalMember) return;
+
+    const price = Number(renewalMember.membershipPrice || 0);
+    const amount = Number(renewalAmount);
+
+    if (price <= 0) {
+      alert("This member does not have a valid membership price.");
+      return;
+    }
+
+    if (!amount || amount <= 0) {
+      alert("Please enter a valid payment amount.");
+      return;
+    }
+
+    try {
+      const nextCycle = Number(renewalMember.membershipCycle || 0) + 1;
+
+      const paymentRef = await addDoc(collection(db, "payments"), {
+        memberId: renewalMember.id,
+        memberName: renewalMember.name,
+        amount,
+        paymentDate: renewalDate,
+        paymentMethod: renewalMethod,
+        membership: renewalMember.membershipName || "",
+        paymentType: "Renewal",
+        cycleNumber: nextCycle,
+        notes: renewalNotes.trim(),
+        createdAt: serverTimestamp(),
+      });
+
+      const paymentStatus = amount >= price ? "Fully Paid" : "Partially Paid";
+
+      if (amount >= price) {
+        const expirationDate = calculateExpirationDate(
+          renewalDate,
+          renewalMember.membershipDuration,
+        );
+
+        await updateDoc(doc(db, "members", renewalMember.id), {
+          membershipCycle: nextCycle,
+          membershipStartDate: renewalDate,
+          membershipExpirationDate: expirationDate,
+          status: "Active",
+        });
+      } else {
+        // Keep the new renewal cycle open, but do not activate the membership yet.
+        await updateDoc(doc(db, "members", renewalMember.id), {
+          membershipCycle: nextCycle,
+          membershipStartDate: null,
+          membershipExpirationDate: null,
+          status: "Inactive",
+        });
+      }
+
+      await logActivity({
+        action: "Membership Renewal",
+        description: `Recorded ${paymentStatus.toLowerCase()} renewal payment of ₱${amount.toLocaleString()} for ${renewalMember.name}`,
+        targetType: "member",
+        targetId: renewalMember.id,
+        metadata: {
+          paymentId: paymentRef.id,
+          cycleNumber: nextCycle,
+          paymentStatus,
+        },
+      });
+
+      alert(
+        amount >= price
+          ? "Membership renewed successfully!"
+          : "Renewal payment recorded. Membership will start after full payment.",
+      );
+
+      closeRenewalModal();
+    } catch (error) {
+      console.error("Error renewing membership:", error);
+      alert("Failed to renew membership.");
+    }
+  };
+
+  // =========================================================
   // FILTER MEMBERS
   // =========================================================
 
@@ -475,16 +608,16 @@ function Members() {
                     <td>
                       <span
                         className={`member-status ${
-                          member.isRestricted
+                          getMemberStatus(member) === "Restricted"
                             ? "restricted"
-                            : member.status === "Active"
-                              ? "active"
-                              : "inactive"
+                            : getMemberStatus(member) === "Expired"
+                              ? "expired"
+                              : getMemberStatus(member) === "Active"
+                                ? "active"
+                                : "inactive"
                         }`}
                       >
-                        {member.isRestricted
-                          ? "Restricted"
-                          : member.status}
+                        {getMemberStatus(member)}
                       </span>
                     </td>
 
@@ -497,6 +630,16 @@ function Members() {
                       >
                         Edit
                       </button>
+
+                      {getMemberStatus(member) === "Expired" && (
+                        <button
+                          className="edit-btn"
+                          style={{ marginRight: "6px" }}
+                          onClick={() => openRenewalModal(member)}
+                        >
+                          Renew
+                        </button>
+                      )}
 
                       <button
                         className="delete-btn"
@@ -777,6 +920,26 @@ function Members() {
           Do not change this because EntryLog reads the
           Firestore member document ID.
           ===================================================== */}
+
+      {showRenewalModal && renewalMember && (
+        <div className="modal-overlay" onClick={closeRenewalModal}>
+          <div className="member-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>Renew Membership</h2>
+              <button className="close-btn" onClick={closeRenewalModal}>×</button>
+            </div>
+            <form onSubmit={handleRenewMembership}>
+              <div className="form-group"><label>Member</label><input value={renewalMember.name} disabled /></div>
+              <div className="form-group"><label>Membership Plan</label><input value={`${renewalMember.membershipName || "Membership"} - ₱${Number(renewalMember.membershipPrice || 0).toLocaleString()}`} disabled /></div>
+              <div className="form-group"><label>Renewal Amount</label><input type="number" value={renewalAmount} onChange={(e) => setRenewalAmount(e.target.value)} min="1" step="0.01" required /></div>
+              <div className="form-group"><label>Payment Date</label><input type="date" value={renewalDate} onChange={(e) => setRenewalDate(e.target.value)} required /></div>
+              <div className="form-group"><label>Payment Method</label><select value={renewalMethod} onChange={(e) => setRenewalMethod(e.target.value)}><option>Cash</option><option>GCash</option><option>Bank Transfer</option><option>Card</option></select></div>
+              <div className="form-group"><label>Notes</label><textarea value={renewalNotes} onChange={(e) => setRenewalNotes(e.target.value)} rows="3" /></div>
+              <div className="modal-actions"><button type="button" className="cancel-btn" onClick={closeRenewalModal}>Cancel</button><button type="submit" className="save-btn">Record Renewal</button></div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {selectedMemberQR && (
         <div className="modal-overlay">

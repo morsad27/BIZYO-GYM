@@ -129,20 +129,27 @@ function Payments() {
   const getMemberTotalPaid = (
     memberId,
     excludePaymentId = null,
+    cycleNumber = null,
   ) => {
-    return payments.reduce(
-      (total, payment) => {
-        if (
-          payment.memberId !== memberId ||
-          payment.id === excludePaymentId
-        ) {
-          return total;
-        }
+    return payments.reduce((total, payment) => {
+      if (payment.memberId !== memberId || payment.id === excludePaymentId) {
+        return total;
+      }
 
-        return total + Number(payment.amount || 0);
-      },
-      0,
-    );
+      // Existing payment records without cycleNumber belong to the first cycle.
+      const paymentCycle = Number(payment.cycleNumber || 1);
+
+      if (cycleNumber !== null && paymentCycle !== Number(cycleNumber)) {
+        return total;
+      }
+
+      return total + Number(payment.amount || 0);
+    }, 0);
+  };
+
+  const getCurrentCycleNumber = (member) => {
+    if (!member) return 1;
+    return Math.max(Number(member.membershipCycle || 1), 1);
   };
 
   /*
@@ -180,23 +187,33 @@ function Payments() {
    *
    * Membership starts only when the member is fully paid.
    */
-  const syncMemberMembership = async (member, totalPaid, paymentDate) => {
+  const syncMemberMembership = async (
+    member,
+    totalPaid,
+    paymentDate,
+    cycleNumber,
+  ) => {
     if (!member) return;
 
     const membershipPrice = getMembershipPrice(member);
-    const isFullyPaid =
-      membershipPrice > 0 && totalPaid >= membershipPrice;
+    const isFullyPaid = membershipPrice > 0 && totalPaid >= membershipPrice;
+
+    // Do not let an old payment cycle overwrite the current membership cycle.
+    if (
+      member.membershipCycle &&
+      Number(member.membershipCycle) !== Number(cycleNumber)
+    ) {
+      return;
+    }
 
     const memberRef = doc(db, "members", member.id);
 
     if (isFullyPaid) {
-      // Keep an existing membership start date if the member
-      // was already activated. Otherwise, start it using the
-      // payment date that completed the membership payment.
       const startDate =
-        member.membershipStartDate ||
-        paymentDate ||
-        new Date().toISOString().split("T")[0];
+        member.membershipStartDate &&
+        Number(member.membershipCycle || 1) === Number(cycleNumber)
+          ? member.membershipStartDate
+          : paymentDate || new Date().toISOString().split("T")[0];
 
       const expirationDate = calculateExpirationDate(
         startDate,
@@ -204,6 +221,7 @@ function Payments() {
       );
 
       await updateDoc(memberRef, {
+        membershipCycle: Number(cycleNumber),
         membershipStartDate: startDate,
         membershipExpirationDate: expirationDate,
         status: "Active",
@@ -212,11 +230,12 @@ function Payments() {
       return;
     }
 
-    // If the member is no longer fully paid, the membership
-    // should not be considered started.
+    // A partial payment must not activate the membership.
     await updateDoc(memberRef, {
+      membershipCycle: Number(cycleNumber),
       membershipStartDate: null,
       membershipExpirationDate: null,
+      status: "Inactive",
     });
   };
 
@@ -238,9 +257,12 @@ function Payments() {
     }
 
     const price = getMembershipPrice(member);
+    const cycleNumber = getCurrentCycleNumber(member);
 
     const paid = getMemberTotalPaid(
       memberId,
+      null,
+      cycleNumber,
     );
 
     const remaining = Math.max(
@@ -362,12 +384,16 @@ function Payments() {
         return;
       }
 
+      const cycleNumber = getCurrentCycleNumber(selectedMember);
+
       const newPaymentRef = await addDoc(
         collection(db, "payments"),
         {
           memberId: selectedMember.id,
           memberName: selectedMember.name,
           amount: Number(formData.amount),
+          paymentType: selectedMember.membershipStartDate ? "Additional" : "Initial",
+          cycleNumber,
           paymentDate:
             formData.paymentDate,
           paymentMethod:
@@ -384,6 +410,8 @@ function Payments() {
       const newTotalPaid =
         getMemberTotalPaid(
           selectedMember.id,
+          null,
+          cycleNumber,
         ) + Number(formData.amount);
 
       const membershipPrice =
@@ -395,6 +423,7 @@ function Payments() {
         selectedMember,
         newTotalPaid,
         formData.paymentDate,
+        cycleNumber,
       );
 
       let paymentStatus = "No Payment";
@@ -468,10 +497,15 @@ function Payments() {
        * Calculate the total excluding
        * the payment currently being edited.
        */
+      const cycleNumber = Number(
+        editingPayment.cycleNumber || getCurrentCycleNumber(selectedMember),
+      );
+
       const previousPaymentsTotal =
         getMemberTotalPaid(
           selectedMember.id,
           editingPayment.id,
+          cycleNumber,
         );
 
       const newTotalPaid =
@@ -487,6 +521,7 @@ function Payments() {
         selectedMember,
         newTotalPaid,
         formData.paymentDate,
+        cycleNumber,
       );
 
       let paymentStatus = "No Payment";
@@ -510,6 +545,8 @@ function Payments() {
         memberId: selectedMember.id,
         memberName: selectedMember.name,
         amount: Number(formData.amount),
+        paymentType: editingPayment.paymentType || "Initial",
+        cycleNumber,
         paymentDate:
           formData.paymentDate,
         paymentMethod:
@@ -567,15 +604,21 @@ function Payments() {
       );
 
       if (selectedMember) {
+        const cycleNumber = Number(
+          payment.cycleNumber || getCurrentCycleNumber(selectedMember),
+        );
+
         const remainingTotalPaid = getMemberTotalPaid(
           selectedMember.id,
           payment.id,
+          cycleNumber,
         );
 
         await syncMemberMembership(
           selectedMember,
           remainingTotalPaid,
           null,
+          cycleNumber,
         );
       }
 

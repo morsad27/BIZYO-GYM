@@ -487,3 +487,7 @@ tbody tr:hover {
   background: rgba(255, 92, 92, 0.15);
   color: #ff5c5c;
 }
+.member-status.expired {
+  background: rgba(255, 92, 92, 0.15);
+  color: #ff5c5c;
+}
